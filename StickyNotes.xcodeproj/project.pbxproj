@@ -1,0 +1,439 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		1C46CDDB22B4ED981F589AD2 /* Note.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB2AF21E0B78FD40A3CDC5CD /* Note.swift */; };
+		3F086E2F0315113DDD5D425D /* Editor in Resources */ = {isa = PBXBuildFile; fileRef = 59EABCDC2DBA29584AC0D43A /* Editor */; };
+		42B64CCC894F14DED9D9C667 /* NoteWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08E57697F91300C2C17BD66D /* NoteWindowController.swift */; };
+		4B93F54DA2B1FF7BD656FCCD /* WindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ECDAF6CAE73FDF8225DAC57 /* WindowManager.swift */; };
+		501054FD3179F74231299EDE /* StickyNotesApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE2544B56321F9916BB75E94 /* StickyNotesApp.swift */; };
+		637484C42C4A7064C4266113 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = D319DC00F39B7144CBE620E9 /* AppIcon.icns */; };
+		6CDC78B2AD65AD1D51927FCE /* AppCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2C9AF8C1F7411AD0875E92 /* AppCoordinator.swift */; };
+		7FD53CDB722D5F3B4AC52D22 /* NoteManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B886F33B3197717C78165B58 /* NoteManager.swift */; };
+		90D47C5608DB53CC72FB1C61 /* NoteColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8AD4975D97DF61425F1AE67 /* NoteColor.swift */; };
+		DD44E24E623FA4E4AD06C546 /* PersistenceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71BFD3A36CDBBA17C3B452D8 /* PersistenceManager.swift */; };
+		DEC956DE15BF38F713B4F165 /* SharedEditorBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = F859FFD4C697A12E4B17D547 /* SharedEditorBridge.swift */; };
+		F8109ABFEB96C999A328C0EA /* SharedWebViewManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB713CA7C95306884C35BB03 /* SharedWebViewManager.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		08E57697F91300C2C17BD66D /* NoteWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteWindowController.swift; sourceTree = "<group>"; };
+		1ECDAF6CAE73FDF8225DAC57 /* WindowManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowManager.swift; sourceTree = "<group>"; };
+		48F7FAD50DF90DD24DBFF35A /* StickyNotes.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = StickyNotes.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		59EABCDC2DBA29584AC0D43A /* Editor */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Editor; path = Sources/StickyNotes/Resources/Editor; sourceTree = SOURCE_ROOT; };
+		6D2C9AF8C1F7411AD0875E92 /* AppCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCoordinator.swift; sourceTree = "<group>"; };
+		71BFD3A36CDBBA17C3B452D8 /* PersistenceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceManager.swift; sourceTree = "<group>"; };
+		B886F33B3197717C78165B58 /* NoteManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteManager.swift; sourceTree = "<group>"; };
+		CB713CA7C95306884C35BB03 /* SharedWebViewManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedWebViewManager.swift; sourceTree = "<group>"; };
+		D319DC00F39B7144CBE620E9 /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
+		D74F446594874811D48D7768 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		D8AD4975D97DF61425F1AE67 /* NoteColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteColor.swift; sourceTree = "<group>"; };
+		DB2AF21E0B78FD40A3CDC5CD /* Note.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Note.swift; sourceTree = "<group>"; };
+		DE2544B56321F9916BB75E94 /* StickyNotesApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickyNotesApp.swift; sourceTree = "<group>"; };
+		F859FFD4C697A12E4B17D547 /* SharedEditorBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedEditorBridge.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		0AB90BC38E930A1382673BCA /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				D319DC00F39B7144CBE620E9 /* AppIcon.icns */,
+				59EABCDC2DBA29584AC0D43A /* Editor */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		2B22C5078FDBEFE28B172CFA /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				9535A2BB219E7E2C6F879410 /* StickyNotes */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		41DD5BC7186368F89FE17FDC /* Bridge */ = {
+			isa = PBXGroup;
+			children = (
+				F859FFD4C697A12E4B17D547 /* SharedEditorBridge.swift */,
+			);
+			path = Bridge;
+			sourceTree = "<group>";
+		};
+		4611E3A53B177571BB4E961A /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				DB2AF21E0B78FD40A3CDC5CD /* Note.swift */,
+				D8AD4975D97DF61425F1AE67 /* NoteColor.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		4E2B9DFAFECACE9D91CA93A4 = {
+			isa = PBXGroup;
+			children = (
+				2B22C5078FDBEFE28B172CFA /* Sources */,
+				FB687CFA1368E1A62656DDD1 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		9535A2BB219E7E2C6F879410 /* StickyNotes */ = {
+			isa = PBXGroup;
+			children = (
+				D74F446594874811D48D7768 /* Info.plist */,
+				DE2544B56321F9916BB75E94 /* StickyNotesApp.swift */,
+				AA4AE5D8FD3A722B35455F2B /* App */,
+				41DD5BC7186368F89FE17FDC /* Bridge */,
+				4611E3A53B177571BB4E961A /* Models */,
+				0AB90BC38E930A1382673BCA /* Resources */,
+				C70324E60F06E664716B156B /* Views */,
+			);
+			path = StickyNotes;
+			sourceTree = "<group>";
+		};
+		AA4AE5D8FD3A722B35455F2B /* App */ = {
+			isa = PBXGroup;
+			children = (
+				6D2C9AF8C1F7411AD0875E92 /* AppCoordinator.swift */,
+				B886F33B3197717C78165B58 /* NoteManager.swift */,
+				71BFD3A36CDBBA17C3B452D8 /* PersistenceManager.swift */,
+				CB713CA7C95306884C35BB03 /* SharedWebViewManager.swift */,
+				1ECDAF6CAE73FDF8225DAC57 /* WindowManager.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		C70324E60F06E664716B156B /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				F4F6C8786B24AA7FCDBAABDF /* NoteWindow */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		F4F6C8786B24AA7FCDBAABDF /* NoteWindow */ = {
+			isa = PBXGroup;
+			children = (
+				08E57697F91300C2C17BD66D /* NoteWindowController.swift */,
+			);
+			path = NoteWindow;
+			sourceTree = "<group>";
+		};
+		FB687CFA1368E1A62656DDD1 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				48F7FAD50DF90DD24DBFF35A /* StickyNotes.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		79739306D0E728206179484B /* StickyNotes */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1F2AE3FDAE09C2D4C2E2A8A3 /* Build configuration list for PBXNativeTarget "StickyNotes" */;
+			buildPhases = (
+				2C4DF7152D54CCA219528983 /* Build editor bundle */,
+				BBA6F222D23D65B6E6716F15 /* Sources */,
+				242B4ECB1BB66A8B84364940 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = StickyNotes;
+			packageProductDependencies = (
+			);
+			productName = StickyNotes;
+			productReference = 48F7FAD50DF90DD24DBFF35A /* StickyNotes.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		91582E3B08811EC7ED174249 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					79739306D0E728206179484B = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Manual;
+					};
+				};
+			};
+			buildConfigurationList = 0C84412A9808554CA465B0EA /* Build configuration list for PBXProject "StickyNotes" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 4E2B9DFAFECACE9D91CA93A4;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = FB687CFA1368E1A62656DDD1 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				79739306D0E728206179484B /* StickyNotes */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		242B4ECB1BB66A8B84364940 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				637484C42C4A7064C4266113 /* AppIcon.icns in Resources */,
+				3F086E2F0315113DDD5D425D /* Editor in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		2C4DF7152D54CCA219528983 /* Build editor bundle */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Build editor bundle";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"$SRCROOT/Scripts/build-editor.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		BBA6F222D23D65B6E6716F15 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6CDC78B2AD65AD1D51927FCE /* AppCoordinator.swift in Sources */,
+				1C46CDDB22B4ED981F589AD2 /* Note.swift in Sources */,
+				90D47C5608DB53CC72FB1C61 /* NoteColor.swift in Sources */,
+				7FD53CDB722D5F3B4AC52D22 /* NoteManager.swift in Sources */,
+				42B64CCC894F14DED9D9C667 /* NoteWindowController.swift in Sources */,
+				DD44E24E623FA4E4AD06C546 /* PersistenceManager.swift in Sources */,
+				DEC956DE15BF38F713B4F165 /* SharedEditorBridge.swift in Sources */,
+				F8109ABFEB96C999A328C0EA /* SharedWebViewManager.swift in Sources */,
+				501054FD3179F74231299EDE /* StickyNotesApp.swift in Sources */,
+				4B93F54DA2B1FF7BD656FCCD /* WindowManager.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		1B80FDFB6344E1C29C6BD576 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = Sources/StickyNotes/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.mdstickynotes;
+				PRODUCT_NAME = StickyNotes;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		2405E397827F72E575CA13E0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 10101;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MARKETING_VERSION = 1.1.1;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+		421687E434DC89975A82ED91 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = Sources/StickyNotes/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.mdstickynotes;
+				PRODUCT_NAME = StickyNotes;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		4F46AC4611D5C389471FD1FD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 10101;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MARKETING_VERSION = 1.1.1;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		0C84412A9808554CA465B0EA /* Build configuration list for PBXProject "StickyNotes" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4F46AC4611D5C389471FD1FD /* Debug */,
+				2405E397827F72E575CA13E0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		1F2AE3FDAE09C2D4C2E2A8A3 /* Build configuration list for PBXNativeTarget "StickyNotes" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				421687E434DC89975A82ED91 /* Debug */,
+				1B80FDFB6344E1C29C6BD576 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 91582E3B08811EC7ED174249 /* Project object */;
+}

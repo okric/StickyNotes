@@ -1,118 +1,80 @@
 #!/bin/bash
 
-# Build script to create a proper macOS .app bundle
+# Builds the app with xcodebuild and packages a styled DMG.
+#
+#   ./build-app.sh                                  # ad-hoc signed
+#   CODESIGN_IDENTITY="Developer ID Application: …" ./build-app.sh
+#
+# The CodeMirror bundle is built by the Xcode pre-build phase
+# (Scripts/build-editor.sh); no separate npm step is needed.
 
-set -e
+set -euo pipefail
 
-echo "Building StickyNotes.app..."
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+cd "$ROOT"
 
-# Build the web editor first
-echo "Building web editor..."
-cd editor-web
-npm run build
-cp dist/editor.bundle.js ../Sources/StickyNotes/Resources/Editor/editor.bundle.js
-cd ..
-echo "✅ Web editor built"
-
-# Build the executable
-swift build -c release
-
-# Create app bundle structure
 APP_NAME="StickyNotes"
-# Single source of truth for the version. Bump on release (semver).
-VERSION="${VERSION:-1.1.1}"
-IFS=. read -r V_MAJOR V_MINOR V_PATCH <<< "$VERSION"
-# Sparkle/xcodebuild-style monotonic build number: 1.1.1 -> 10101
-BUILD_NUMBER=$(( V_MAJOR * 10000 + V_MINOR * 100 + V_PATCH ))
-APP_DIR="build/$APP_NAME.app"
-CONTENTS_DIR="$APP_DIR/Contents"
-MACOS_DIR="$CONTENTS_DIR/MacOS"
-RESOURCES_DIR="$CONTENTS_DIR/Resources"
+BUILD_DIR="$ROOT/build"
+DERIVED="$BUILD_DIR/DerivedData"
+APP_DIR="$BUILD_DIR/$APP_NAME.app"
+XCODEPROJ="$ROOT/$APP_NAME.xcodeproj"
 
-# Clean and create directories
-rm -rf build
-mkdir -p "$MACOS_DIR"
-mkdir -p "$RESOURCES_DIR"
-
-# Copy executable
-cp ".build/release/$APP_NAME" "$MACOS_DIR/$APP_NAME"
-
-# Copy resources
-cp -R "Sources/StickyNotes/Resources/" "$RESOURCES_DIR/"
-
-# Create Info.plist
-cat > "$CONTENTS_DIR/Info.plist" << EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleExecutable</key>
-    <string>$APP_NAME</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.mdstickynotes</string>
-    <key>CFBundleInfoDictionaryVersion</key>
-    <string>6.0</string>
-    <key>CFBundleName</key>
-    <string>MD Sticky Notes</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleShortVersionString</key>
-    <string>$VERSION</string>
-    <key>CFBundleVersion</key>
-    <string>$BUILD_NUMBER</string>
-    <key>LSMinimumSystemVersion</key>
-    <string>12.0</string>
-    <key>CFBundleIconFile</key>
-    <string>AppIcon</string>
-    <key>NSHighResolutionCapable</key>
-    <true/>
-    <key>NSHumanReadableCopyright</key>
-    <string>Copyright © 2025</string>
-    <key>NSPrincipalClass</key>
-    <string>NSApplication</string>
-</dict>
-</plist>
-EOF
-
-# Create PkgInfo
-echo -n "APPL????" > "$CONTENTS_DIR/PkgInfo"
-
-# Code signing.
-# Default is ad-hoc (local builds, no team needed).
-# Set CODESIGN_IDENTITY to a Developer ID to produce a notarizable build:
-#   CODESIGN_IDENTITY="Developer ID Application: Name (TEAMID)" ./build-app.sh
-if [ -n "${CODESIGN_IDENTITY:-}" ]; then
-    echo "Signing app with Developer ID..."
-    codesign --force --deep --options runtime --timestamp \
-        --sign "$CODESIGN_IDENTITY" "$APP_DIR"
-    codesign --verify --deep --strict --verbose=2 "$APP_DIR"
-    echo "✅ App signed (Developer ID + hardened runtime)"
-else
-    echo "Signing app (ad-hoc)..."
-    codesign --force --deep --sign - "$APP_DIR"
-    echo "✅ App signed (ad-hoc)"
+# Regenerate the project when the spec changed.
+if [ ! -d "$XCODEPROJ" ] || [ "$ROOT/project.yml" -nt "$XCODEPROJ/project.pbxproj" ]; then
+    if ! command -v xcodegen >/dev/null 2>&1; then
+        echo "error: xcodegen not found (brew install xcodegen)" >&2
+        exit 1
+    fi
+    xcodegen generate
 fi
 
-echo "✅ StickyNotes.app created successfully at: $APP_DIR"
+XCODE_ARGS=(
+    -project "$XCODEPROJ"
+    -scheme "$APP_NAME"
+    -configuration Release
+    -derivedDataPath "$DERIVED"
+    build
+)
+
+if [ -n "${CODESIGN_IDENTITY:-}" ]; then
+    echo "Building with Developer ID signing..."
+    XCODE_ARGS+=(
+        CODE_SIGN_STYLE=Manual
+        CODE_SIGN_IDENTITY="$CODESIGN_IDENTITY"
+        ENABLE_HARDENED_RUNTIME=YES
+        OTHER_CODE_SIGN_FLAGS="--timestamp"
+    )
+else
+    echo "Building ad-hoc signed app..."
+fi
+
+xcodebuild "${XCODE_ARGS[@]}" | tail -5
+
+rm -rf "$APP_DIR"
+cp -R "$DERIVED/Build/Products/Release/$APP_NAME.app" "$APP_DIR"
+codesign --verify --deep --strict "$APP_DIR"
+
+VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP_DIR/Contents/Info.plist")
+echo "✅ $APP_NAME.app $VERSION built at: $APP_DIR"
 
 # Create styled DMG for distribution
 echo "Creating DMG..."
-DMG_TMP="build/tmp.dmg"
-DMG_PATH="build/MDStickyNotes.dmg"
+DMG_TMP="$BUILD_DIR/tmp.dmg"
+DMG_PATH="$BUILD_DIR/MDStickyNotes.dmg"
 VOL_NAME="MD Sticky Notes"
-DMG_DIR="build/dmg"
+DMG_DIR="$BUILD_DIR/dmg"
 rm -rf "$DMG_DIR" "$DMG_PATH" "$DMG_TMP"
 mkdir -p "$DMG_DIR"
 cp -R "$APP_DIR" "$DMG_DIR/"
 ln -s /Applications "$DMG_DIR/Applications"
 
 # Create read-write DMG first (for styling)
-hdiutil create -volname "$VOL_NAME" -srcfolder "$DMG_DIR" -ov -format UDRW "$DMG_TMP"
+hdiutil create -volname "$VOL_NAME" -srcfolder "$DMG_DIR" -ov -format UDRW "$DMG_TMP" >/dev/null
 rm -rf "$DMG_DIR"
 
 # Mount and style with AppleScript
 MOUNT_DIR="/Volumes/$VOL_NAME"
-hdiutil attach "$DMG_TMP" -readwrite -noverify -noautoopen
+hdiutil attach "$DMG_TMP" -readwrite -noverify -noautoopen >/dev/null
 sleep 3
 
 osascript <<APPLESCRIPT
@@ -139,10 +101,10 @@ sleep 2
 sync
 
 # Unmount
-hdiutil detach "$MOUNT_DIR"
+hdiutil detach "$MOUNT_DIR" >/dev/null
 
 # Convert to compressed read-only DMG
-hdiutil convert "$DMG_TMP" -format UDZO -o "$DMG_PATH"
+hdiutil convert "$DMG_TMP" -format UDZO -o "$DMG_PATH" >/dev/null
 rm -f "$DMG_TMP"
 echo "✅ DMG created at: $DMG_PATH"
 

@@ -102,11 +102,21 @@ in `UserDefaults`, and the app is not sandboxed.
 
 ## Development
 
+The Xcode project is generated from `project.yml` with [XcodeGen](https://github.com/yonaskolb/XcodeGen)
+(`brew install xcodegen`). `StickyNotes.xcodeproj` is committed, so you can open it directly;
+regenerate after editing `project.yml`:
+
 ```bash
-# Full rebuild (Swift + JS)
+xcodegen generate
+open StickyNotes.xcodeproj
+```
+
+```bash
+# Full build + DMG from the command line
 ./build-app.sh && open build/StickyNotes.app
 
-# JS-only fast iteration
+# JS-only fast iteration (Xcode pre-build phase rebuilds the bundle when
+# editor-web/src changed; this manual path skips the full app rebuild)
 cd editor-web && npm run build && \
   cp dist/editor.bundle.js ../build/StickyNotes.app/Contents/Resources/Editor/ && \
   open ../build/StickyNotes.app

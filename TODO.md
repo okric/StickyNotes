@@ -2,12 +2,10 @@
 
 ## Release pipeline
 
-- [ ] Wire signed + notarized releases (not started; `build-app.sh` currently
-      defaults to ad-hoc signing).
-      - Add `Scripts/notarize.sh` adapted for SwiftPM (this project has no
-        `.xcodeproj`): build with `CODESIGN_IDENTITY="Developer ID Application:
-        Your Name (TEAMID)"`, notarize, staple, `spctl` gate,
-        then DMG + `gh release upload`.
+- [ ] Wire signed + notarized releases (not started; `build-app.sh` still
+      defaults to ad-hoc signing, but now drives `xcodebuild`).
+      - `build-app.sh` already accepts `CODESIGN_IDENTITY` and enables the
+        hardened runtime; add notarize/staple/`spctl` steps around it.
       - Follow `~/Projects/Wiki/how-to/notarized-distribution-and-sparkle-updates.md`
         and `~/Projects/Wiki/how-to/creating-styled-macos-release-dmg.md`.
       - Hard requirement: never upload a build that `spctl -a -t exec` rejects.
