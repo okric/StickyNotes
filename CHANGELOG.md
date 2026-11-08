@@ -2,6 +2,21 @@
 
 All notable changes to MD Sticky Notes will be documented in this file.
 
+## [1.1.1] - 2026-11-08
+
+### Security (fork)
+
+- Restrict `openURL` bridge to `http`/`https`/`mailto`; drop `file://`, `smb://`
+  and custom schemes from note links
+- Pass note values to the WebView via `callAsyncJavaScript` arguments instead of
+  string interpolation into `evaluateJavaScript`
+- Disable `developerExtrasEnabled` in release builds
+- Single-source version and build numbers in `build-app.sh` (released DMG said
+  `1.0.0` while tagged `v1.1.0`)
+- Optional Developer ID signing with hardened runtime via `CODESIGN_IDENTITY`
+
+---
+
 ## [1.0.0] - 2025-02-07
 
 ### Initial Release

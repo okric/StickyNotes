@@ -2,6 +2,12 @@
 
 A native macOS sticky note app with Obsidian-style markdown live preview, built with Swift and CodeMirror 6.
 
+> **Fork notice** — This is a fork of [jaesuny/markdown-sticky-notes](https://github.com/jaesuny/markdown-sticky-notes)
+> by Jaesun Park, maintained by [okric](https://github.com/okric). It is MIT licensed; the
+> original copyright notice is preserved verbatim in [LICENSE](LICENSE). Changes relative to
+> upstream are documented in [CHANGELOG.md](CHANGELOG.md) and summarized under
+> [Changes in this fork](#changes-in-this-fork).
+
 ![macOS 12+](https://img.shields.io/badge/macOS-12%2B-blue)
 ![Swift 5.9+](https://img.shields.io/badge/Swift-5.9%2B-orange)
 
@@ -32,41 +38,27 @@ A native macOS sticky note app with Obsidian-style markdown live preview, built 
 
 ## Installation
 
-### Homebrew (Recommended)
-```bash
-brew tap jaesuny/tap
-brew install --cask md-sticky-notes
-```
-
-### Manual Download
-If you don't use Homebrew, you can download the DMG directly. Note that manual installation requires extra steps to bypass macOS Gatekeeper.
-
-1. Download [`MDStickyNotes.dmg`](https://github.com/jaesuny/markdown-sticky-notes/releases/download/v1.1.0/MDStickyNotes.dmg)
-2. Open the DMG and drag the app to Applications
-3. **First launch** — macOS will block the app since it is not notarized. To allow it:
-   1. Double-click the app — macOS will show a warning and block it
-   2. Open **System Settings** (시스템 설정)
-   3. Go to **Privacy & Security** (개인정보 보호 및 보안)
-   4. Scroll down to find the message about "StickyNotes" being blocked
-   5. Click **"Open Anyway"** (확인 없이 열기)
-   6. Click **"Open"** (열기) in the confirmation dialog
-   7. After the first launch, you can open it normally
-
-> **Disclaimer**: This app is not notarized by Apple. By downloading and running this app, you acknowledge that you do so at your own risk. The developer assumes no liability for any issues that may arise from its use.
-
-### Build from Source
+### Build from Source (Recommended)
 ```bash
 # Prerequisites: macOS 12+, Swift 5.9+, Node.js 18+
 
 # Clone and build
-git clone https://github.com/jaesuny/markdown-sticky-notes.git
-cd markdown-sticky-notes
-cd editor-web && npm install && cd ..
+git clone https://github.com/okric/StickyNotes.git
+cd StickyNotes
+cd editor-web && npm ci && cd ..
 ./build-app.sh
 
 # Run
 open build/StickyNotes.app
 ```
+
+### Prebuilt DMG
+Prebuilt releases are published on the
+[releases page](https://github.com/okric/StickyNotes/releases). Builds are
+Developer ID signed, notarized, and stapled when released from this fork.
+
+> The upstream Homebrew cask (`brew install --cask md-sticky-notes`) installs
+> the *upstream* app, not this fork.
 
 ## Demo
 
@@ -75,6 +67,24 @@ https://github.com/user-attachments/assets/c3dce235-9c50-4cee-832d-267e0e5f8024
 ## Screenshots
 
 <img src="assets/screenshot.png" alt="MD Sticky Notes" width="360">
+
+## Changes in this fork
+
+Security hardening on top of upstream v1.1.0 (no feature changes):
+
+- **Link scheme allowlist** — only `http`, `https` and `mailto` links are opened.
+  Previously `file://`, `smb://` and arbitrary third-party URL schemes reached
+  `NSWorkspace.open` from note content.
+- **No script interpolation** — note values are passed to the WebView as
+  `callAsyncJavaScript` arguments instead of being spliced into script source.
+- **Web Inspector off in release** — `developerExtrasEnabled` removed.
+- **Version/build numbers from one variable** in `build-app.sh`, matching the
+  released tag (`1.0.0` vs `v1.1.0` drift fixed).
+- **Developer ID signing supported** — `CODESIGN_IDENTITY=... ./build-app.sh`
+  signs with the hardened runtime; ad-hoc remains the default for local builds.
+
+Known limitations that remain (upstream behavior): notes are stored unencrypted
+in `UserDefaults`, and the app is not sandboxed.
 
 ## Technical Details
 
@@ -108,6 +118,7 @@ MIT
 
 ## Credits
 
+- Original project: [jaesuny/markdown-sticky-notes](https://github.com/jaesuny/markdown-sticky-notes), © 2025 Jaesun Park (MIT)
 - Built with [Claude Code](https://claude.ai/code)
 - Editor powered by [CodeMirror 6](https://codemirror.net/)
 - Math rendering by [KaTeX](https://katex.org/)
