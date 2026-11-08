@@ -35,7 +35,7 @@
     "@codemirror/search": "^6.6.0",
     "@codemirror/state": "^6.5.4",
     "@codemirror/view": "^6.39.12",
-    "katex": "^0.16.28",
+    "katex": "^0.19.1",
     "markdown-it": "^14.1.0",
     "markdown-it-mark": "^4.0.0"
   },
