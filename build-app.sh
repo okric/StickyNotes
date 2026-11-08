@@ -19,6 +19,11 @@ swift build -c release
 
 # Create app bundle structure
 APP_NAME="StickyNotes"
+# Single source of truth for the version. Bump on release (semver).
+VERSION="${VERSION:-1.1.1}"
+IFS=. read -r V_MAJOR V_MINOR V_PATCH <<< "$VERSION"
+# Sparkle/xcodebuild-style monotonic build number: 1.1.1 -> 10101
+BUILD_NUMBER=$(( V_MAJOR * 10000 + V_MINOR * 100 + V_PATCH ))
 APP_DIR="build/$APP_NAME.app"
 CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
@@ -52,9 +57,9 @@ cat > "$CONTENTS_DIR/Info.plist" << EOF
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0.0</string>
+    <string>$VERSION</string>
     <key>CFBundleVersion</key>
-    <string>1</string>
+    <string>$BUILD_NUMBER</string>
     <key>LSMinimumSystemVersion</key>
     <string>12.0</string>
     <key>CFBundleIconFile</key>
@@ -72,10 +77,21 @@ EOF
 # Create PkgInfo
 echo -n "APPL????" > "$CONTENTS_DIR/PkgInfo"
 
-# Ad-hoc code signing (allows "right-click → Open" instead of "damaged" error)
-echo "Signing app..."
-codesign --force --deep --sign - "$APP_DIR"
-echo "✅ App signed (ad-hoc)"
+# Code signing.
+# Default is ad-hoc (local builds, no team needed).
+# Set CODESIGN_IDENTITY to a Developer ID to produce a notarizable build:
+#   CODESIGN_IDENTITY="Developer ID Application: Name (TEAMID)" ./build-app.sh
+if [ -n "${CODESIGN_IDENTITY:-}" ]; then
+    echo "Signing app with Developer ID..."
+    codesign --force --deep --options runtime --timestamp \
+        --sign "$CODESIGN_IDENTITY" "$APP_DIR"
+    codesign --verify --deep --strict --verbose=2 "$APP_DIR"
+    echo "✅ App signed (Developer ID + hardened runtime)"
+else
+    echo "Signing app (ad-hoc)..."
+    codesign --force --deep --sign - "$APP_DIR"
+    echo "✅ App signed (ad-hoc)"
+fi
 
 echo "✅ StickyNotes.app created successfully at: $APP_DIR"
 
