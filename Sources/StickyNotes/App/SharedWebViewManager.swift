@@ -30,7 +30,6 @@ class SharedWebViewManager {
 
     private init() {
         let configuration = WKWebViewConfiguration()
-        configuration.preferences.setValue(true, forKey: "developerExtrasEnabled")
 
         let userContentController = WKUserContentController()
         configuration.userContentController = userContentController
@@ -248,8 +247,19 @@ class SharedWebViewManager {
             }
         }
 
-        // Initialize note controls (titlebar mask color)
-        webView.evaluateJavaScript("window.initNoteControls('\(note.colorTheme)', \(note.opacity), \(note.alwaysOnTop))")
+        // Initialize note controls (titlebar mask color).
+        // Values are passed as arguments so nothing is interpolated into script source.
+        webView.callAsyncJavaScript(
+            "window.initNoteControls(colorTheme, opacity, alwaysOnTop)",
+            arguments: [
+                "colorTheme": note.colorTheme,
+                "opacity": note.opacity,
+                "alwaysOnTop": note.alwaysOnTop
+            ],
+            in: nil,
+            in: .page,
+            completionHandler: nil
+        )
 
         print("[SharedWebViewManager] Loaded note: \(noteId)")
     }

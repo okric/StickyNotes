@@ -160,8 +160,12 @@ class NoteWindowController: NSWindowController, NSWindowDelegate {
 
         // Update titlebar mask in JS (only if we have the webview)
         if hasWebView {
-            SharedWebViewManager.shared.webView.evaluateJavaScript(
-                "window.setNoteColor('\(color.rawValue)')", completionHandler: nil
+            SharedWebViewManager.shared.webView.callAsyncJavaScript(
+                "window.setNoteColor(colorTheme)",
+                arguments: ["colorTheme": color.rawValue],
+                in: nil,
+                in: .page,
+                completionHandler: nil
             )
         }
     }

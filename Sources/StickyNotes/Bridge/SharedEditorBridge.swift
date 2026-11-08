@@ -5,6 +5,10 @@ import WebKit
 /// Routes messages by noteId to the appropriate handler.
 class SharedEditorBridge: NSObject, WKScriptMessageHandler {
 
+    /// Schemes that note links are allowed to open. Anything else (file://, smb://,
+    /// custom app schemes, ...) is dropped so a note cannot launch arbitrary handlers.
+    private static let allowedSchemes: Set<String> = ["http", "https", "mailto"]
+
     // MARK: - WKScriptMessageHandler
 
     func userContentController(
@@ -50,10 +54,14 @@ class SharedEditorBridge: NSObject, WKScriptMessageHandler {
             }
 
         case "openURL":
-            if let urlString = body["url"] as? String,
-               let url = URL(string: urlString) {
-                NSWorkspace.shared.open(url)
+            guard let urlString = body["url"] as? String,
+                  let url = URL(string: urlString),
+                  let scheme = url.scheme?.lowercased(),
+                  Self.allowedSchemes.contains(scheme) else {
+                print("[SharedEditorBridge] Blocked URL with disallowed scheme")
+                return
             }
+            NSWorkspace.shared.open(url)
 
         case "log":
             if let msg = body["message"] as? String {
