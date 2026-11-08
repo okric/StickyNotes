@@ -20,11 +20,13 @@ A native macOS sticky note app with Obsidian-style markdown live preview, built 
 - **Math Rendering**: KaTeX support for inline (`$...$`) and block (`$$...$$`) equations
 
 ### Sticky Note Experience
+- **Plain Markdown files**: every note is a `.md` file in a folder you choose (Obsidian vaults work)
 - **Floating Windows**: Always visible while you work
 - **Pin on Top**: Keep important notes above all windows (Cmd+Shift+P)
 - **Multiple Colors**: Yellow, pink, blue, green, purple, orange
 - **Adjustable Opacity**: Transparency slider for each note
-- **Auto-Save**: Never lose your notes
+- **Auto-Save**: Edits are written straight back to the file
+- **Notes Folder Settings**: pick any folder, or create `~/Documents/Sticky Notes` (Cmd+,)
 
 ### Keyboard Shortcuts
 | Shortcut | Action |
@@ -85,6 +87,27 @@ Security hardening on top of upstream v1.1.0 (no feature changes):
 
 Known limitations that remain (upstream behavior): notes are stored unencrypted
 in `UserDefaults`, and the app is not sandboxed.
+
+## Where notes are stored
+
+Notes are **not** kept in a database or `UserDefaults`:
+
+```
+~/Documents/Sticky Notes/          # default folder for new notes (configurable)
+├── Welcome.md
+└── Note 2026-11-08 143012.md
+
+~/Library/Application Support/com.mdstickynotes/
+├── index.json                     # per-note metadata: path, window frame, color, cursor
+└── settings.json                  # chosen notes folder, migration flag
+```
+
+- The index stores only presentation metadata — never note bodies.
+- Edits are written to the `.md` file after a 500 ms debounce, atomically.
+- Closing a note window removes it from the app but **keeps the file**.
+- Files changed externally are picked up the next time the app launches.
+- Notes created by the upstream version (stored in `UserDefaults`) are exported
+  to the notes folder on first launch, once.
 
 ## Technical Details
 

@@ -1,18 +1,42 @@
 import Foundation
 import CoreGraphics
 
-/// Represents a single sticky note
-struct Note: Identifiable, Codable, Equatable {
+/// Where a note's markdown lives.
+enum NoteSourceKind: String, Codable, Equatable {
+    /// Absolute POSIX path to a local Markdown file.
+    case file
+    /// Reserved for remote notes. Not implemented yet; decoding keeps it so the
+    /// schema can grow without breaking existing indexes.
+    case remoteURL
+}
+
+/// A sticky note backed by an external Markdown file.
+///
+/// Only presentation metadata is stored in the index (`index.json`); `content`
+/// is read from `path` at launch and written back on edit.
+struct Note: Identifiable, Equatable {
     /// Unique identifier for the note
     let id: UUID
 
-    /// Markdown content of the note
+    /// Backing storage kind
+    var sourceKind: NoteSourceKind
+
+    /// Absolute POSIX path of the Markdown file
+    var path: String
+
+    /// Display name, derived from the file name (without `.md`)
+    var title: String
+
+    /// Markdown source. Loaded from disk; never persisted in the index.
     var content: String
+
+    /// True when the backing file was not found at load time.
+    var isMissing: Bool
 
     /// Window position on screen
     var position: CGPoint
 
-    /// Window size
+    /// Window size on screen
     var size: CGSize
 
     /// Whether the window is minimized
@@ -39,10 +63,18 @@ struct Note: Identifiable, Codable, Equatable {
     /// Last modification timestamp
     var modifiedAt: Date
 
-    /// Initialize a new note with default values
+    /// File URL for file-backed notes
+    var fileURL: URL? {
+        sourceKind == .file ? URL(fileURLWithPath: path) : nil
+    }
+
     init(
         id: UUID = UUID(),
+        sourceKind: NoteSourceKind = .file,
+        path: String,
+        title: String,
         content: String = "",
+        isMissing: Bool = false,
         position: CGPoint = CGPoint(x: 100, y: 100),
         size: CGSize = CGSize(width: 300, height: 360),
         isMinimized: Bool = false,
@@ -55,7 +87,11 @@ struct Note: Identifiable, Codable, Equatable {
         modifiedAt: Date = Date()
     ) {
         self.id = id
+        self.sourceKind = sourceKind
+        self.path = path
+        self.title = title
         self.content = content
+        self.isMissing = isMissing
         self.position = position
         self.size = size
         self.isMinimized = isMinimized
@@ -75,38 +111,48 @@ struct Note: Identifiable, Codable, Equatable {
 }
 
 // MARK: - Codable Conformance
-extension Note {
+
+extension Note: Codable {
     enum CodingKeys: String, CodingKey {
-        case id, content, position, size, isMinimized, opacity, colorTheme, cursorPosition, scrollTop, alwaysOnTop, createdAt, modifiedAt
+        case id, sourceKind, path, title, position, size, isMinimized, opacity
+        case colorTheme, cursorPosition, scrollTop, alwaysOnTop, createdAt, modifiedAt
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
-        content = try container.decode(String.self, forKey: .content)
+        sourceKind = try container.decodeIfPresent(NoteSourceKind.self, forKey: .sourceKind) ?? .file
+        path = try container.decodeIfPresent(String.self, forKey: .path) ?? ""
+        title = try container.decodeIfPresent(String.self, forKey: .title) ?? ""
+
+        // Transient state, filled in by NoteManager from the backing file.
+        content = ""
+        isMissing = path.isEmpty
 
         // Decode CGPoint
-        let positionDict = try container.decode([String: Double].self, forKey: .position)
+        let positionDict = try container.decodeIfPresent([String: Double].self, forKey: .position) ?? [:]
         position = CGPoint(x: positionDict["x"] ?? 100, y: positionDict["y"] ?? 100)
 
         // Decode CGSize
-        let sizeDict = try container.decode([String: Double].self, forKey: .size)
+        let sizeDict = try container.decodeIfPresent([String: Double].self, forKey: .size) ?? [:]
         size = CGSize(width: sizeDict["width"] ?? 300, height: sizeDict["height"] ?? 360)
 
-        isMinimized = try container.decode(Bool.self, forKey: .isMinimized)
-        opacity = try container.decode(Double.self, forKey: .opacity)
+        isMinimized = try container.decodeIfPresent(Bool.self, forKey: .isMinimized) ?? false
+        opacity = try container.decodeIfPresent(Double.self, forKey: .opacity) ?? 0.95
         colorTheme = try container.decodeIfPresent(String.self, forKey: .colorTheme) ?? "yellow"
         cursorPosition = try container.decodeIfPresent(Int.self, forKey: .cursorPosition) ?? 0
         scrollTop = try container.decodeIfPresent(Double.self, forKey: .scrollTop) ?? 0
         alwaysOnTop = try container.decodeIfPresent(Bool.self, forKey: .alwaysOnTop) ?? false
-        createdAt = try container.decode(Date.self, forKey: .createdAt)
-        modifiedAt = try container.decode(Date.self, forKey: .modifiedAt)
+        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+        modifiedAt = try container.decodeIfPresent(Date.self, forKey: .modifiedAt) ?? createdAt
     }
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
-        try container.encode(content, forKey: .content)
+        try container.encode(sourceKind, forKey: .sourceKind)
+        try container.encode(path, forKey: .path)
+        try container.encode(title, forKey: .title)
 
         // Encode CGPoint as dictionary
         let positionDict = ["x": position.x, "y": position.y]

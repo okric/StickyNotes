@@ -19,13 +19,19 @@ DERIVED="$BUILD_DIR/DerivedData"
 APP_DIR="$BUILD_DIR/$APP_NAME.app"
 XCODEPROJ="$ROOT/$APP_NAME.xcodeproj"
 
-# Regenerate the project when the spec changed.
-if [ ! -d "$XCODEPROJ" ] || [ "$ROOT/project.yml" -nt "$XCODEPROJ/project.pbxproj" ]; then
+# Regenerate the project when the spec or the file list changed.
+needs_regen() {
+    [ ! -d "$XCODEPROJ" ] && return 0
+    [ "$ROOT/project.yml" -nt "$XCODEPROJ/project.pbxproj" ] && return 0
+    [ -n "$(find "$ROOT/Sources" -newer "$XCODEPROJ/project.pbxproj" -name '*.swift' -print -quit)" ]
+}
+
+if needs_regen; then
     if ! command -v xcodegen >/dev/null 2>&1; then
         echo "error: xcodegen not found (brew install xcodegen)" >&2
         exit 1
     fi
-    xcodegen generate
+    xcodegen generate >/dev/null
 fi
 
 XCODE_ARGS=(

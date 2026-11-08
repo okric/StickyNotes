@@ -56,7 +56,7 @@ struct MenuBarCommands: Scene {
 
     var body: some Scene {
         Settings {
-            EmptyView()
+            SettingsView(settings: coordinator.settings)
         }
         .commands {
             // File menu
@@ -70,6 +70,10 @@ struct MenuBarCommands: Scene {
 
                 Button("Show All Notes") {
                     coordinator.showAllNotes()
+                }
+
+                Button("Show Notes Folder") {
+                    coordinator.settings.revealDefaultFolder()
                 }
             }
 

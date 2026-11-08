@@ -2,6 +2,21 @@
 
 All notable changes to MD Sticky Notes will be documented in this file.
 
+## [1.2.0] - 2026-11-08
+
+### Notes storage (fork)
+
+- Notes are now external Markdown files; the app stores only the path and
+  presentation metadata in `~/Library/Application Support/com.mdstickynotes/index.json`
+- Settings window (Cmd+,) with a folder picker and a one-click
+  "Create Folder in Documents" action
+- Edits are written back to the file (atomic, 500 ms debounce); closing a window
+  keeps the file on disk
+- One-time migration of notes from the old `UserDefaults` storage
+- Xcode project generated from `project.yml`; `build-app.sh` now drives `xcodebuild`
+
+---
+
 ## [1.1.1] - 2026-11-08
 
 ### Security (fork)

@@ -14,16 +14,22 @@ class AppCoordinator: ObservableObject {
     /// Set to true during app termination to prevent note deletion on window close
     var isQuitting = false
 
+    /// Notes folder and migration preferences (Settings window)
+    @Published var settings: AppSettings
+
     // MARK: - Private Properties
 
-    private let persistenceManager: PersistenceManager
+    private let store: NotesStore
     private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Initialization
 
     init() {
-        self.persistenceManager = PersistenceManager()
-        self.noteManager = NoteManager(persistenceManager: persistenceManager)
+        let store = NotesStore()
+        let settings = AppSettings(store: store)
+        self.store = store
+        self.settings = settings
+        self.noteManager = NoteManager(store: store, settings: settings)
         self.windowManager = WindowManager()
 
         // Wire up SharedWebViewManager
@@ -38,13 +44,16 @@ class AppCoordinator: ObservableObject {
     /// Create a new note and open its window on the current screen
     func createNewNote() {
         let position = calculateNewNotePosition()
-        let note = noteManager.createNote(position: position)
+        guard let note = noteManager.createNote(position: position) else {
+            NSSound.beep()
+            return
+        }
         windowManager.openWindow(for: note, coordinator: self)
     }
 
     /// Called when a note window is closing (from windowWillClose delegate).
     /// If the app is quitting, skip — saveAllNotesImmediately() handles bulk save.
-    /// Otherwise, delete the note (Apple Stickies behavior).
+    /// Otherwise, remove the note from the index. Its Markdown file stays on disk.
     func closeNoteWindow(_ noteId: UUID) {
         windowManager.removeWindow(for: noteId)
         SharedWebViewManager.shared.removeCachedState(for: noteId)
@@ -52,7 +61,7 @@ class AppCoordinator: ObservableObject {
         if isQuitting {
             return
         }
-        // User explicitly closed — delete the note
+        // User explicitly closed — drop it from the index, keep the file
         noteManager.deleteNote(noteId)
     }
 
@@ -149,11 +158,9 @@ class AppCoordinator: ObservableObject {
         // Flush the single shared WKWebView's current state
         SharedWebViewManager.shared.flushCurrentNoteState()
 
-        // Filter out empty notes, then save to disk
-        let nonEmptyNotes = noteManager.notes.filter {
-            !$0.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        }
-        persistenceManager.saveNotes(nonEmptyNotes)
+        // Write pending bodies and the index. Empty notes are kept: they are
+        // real files the user may want to fill in later.
+        noteManager.saveAll()
     }
 
     // MARK: - Private Methods

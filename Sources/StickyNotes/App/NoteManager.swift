@@ -1,7 +1,11 @@
 import Foundation
 import Combine
 
-/// Manages the collection of all notes
+/// Manages the collection of notes.
+///
+/// Metadata lives in `NotesStore.index`, note bodies live in external Markdown
+/// files. Edits are debounced, written to the file, and the index is refreshed
+/// alongside.
 class NoteManager: ObservableObject {
     // MARK: - Published Properties
 
@@ -9,52 +13,104 @@ class NoteManager: ObservableObject {
 
     // MARK: - Private Properties
 
-    private let persistenceManager: PersistenceManager
+    private let store: NotesStore
+    private let settings: AppSettings
+
+    /// Debounce timer for auto-save
+    private var saveTimer: Timer?
+    private let saveDelay: TimeInterval = 0.5
+
+    /// Notes whose body changed since the last flush
+    private var dirtyNoteIds = Set<UUID>()
+
+    /// Index needs rewriting (window state, cursor, ordering)
+    private var indexDirty = false
 
     // MARK: - Initialization
 
-    init(persistenceManager: PersistenceManager = PersistenceManager()) {
-        self.persistenceManager = persistenceManager
+    init(store: NotesStore, settings: AppSettings) {
+        self.store = store
+        self.settings = settings
         loadNotes()
+    }
+
+    // MARK: - Loading
+
+    /// Load the index and read each note's body from its file.
+    func loadNotes() {
+        notes = store.loadIndex().map(loadingContent)
+
+        guard notes.isEmpty else { return }
+
+        if !settings.didMigrateLegacyNotes {
+            if let folder = settings.ensureDefaultFolder() {
+                let migrated = LegacyImporter.migrate(store: store, into: folder)
+                settings.markLegacyMigrationDone()
+                if !migrated.isEmpty {
+                    notes = migrated
+                    store.saveIndex(notes)
+                    return
+                }
+            } else {
+                settings.markLegacyMigrationDone()
+            }
+        }
+
+        createDefaultNote()
+    }
+
+    private func loadingContent(_ note: Note) -> Note {
+        var note = note
+        if let content = store.readContent(for: note) {
+            note.content = content
+            note.isMissing = false
+        } else {
+            note.content = ""
+            note.isMissing = true
+            print("[NoteManager] Backing file missing for note \(note.id): \(note.path)")
+        }
+        return note
     }
 
     // MARK: - Public Methods
 
-    /// Load notes from persistence, filtering out empty notes
-    func loadNotes() {
-        notes = persistenceManager.loadNotes().filter {
-            !$0.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        }
-
-        // If no notes exist, create a default welcome note
-        if notes.isEmpty {
-            createDefaultNote()
-        }
-    }
-
-    /// Create a new note
-    /// - Parameter content: Initial content for the note
-    /// - Returns: The newly created note
+    /// Create a new note file in the default folder and register it.
     @discardableResult
-    func createNote(content: String = "", position: CGPoint = CGPoint(x: 100, y: 100)) -> Note {
-        let colors = NoteColor.allCases
-        let colorTheme = colors[notes.count % colors.count].rawValue
+    func createNote(
+        content: String = "",
+        position: CGPoint = CGPoint(x: 100, y: 100),
+        baseTitle: String? = nil
+    ) -> Note? {
+        guard let folder = settings.ensureDefaultFolder() else {
+            print("[NoteManager] No notes folder available")
+            return nil
+        }
 
-        let note = Note(
-            content: content,
-            position: position,
-            colorTheme: colorTheme
-        )
-
-        notes.append(note)
-        persistenceManager.saveNotesDebounced(notes)
-
-        print("[NoteManager] Created new note: \(note.id)")
-        return note
+        do {
+            let url = try store.createNoteFile(
+                in: folder,
+                baseTitle: baseTitle ?? NotesStore.defaultTitle(),
+                content: content
+            )
+            let colors = NoteColor.allCases
+            let note = Note(
+                path: url.path,
+                title: url.deletingPathExtension().lastPathComponent,
+                content: content,
+                position: position,
+                colorTheme: colors[notes.count % colors.count].rawValue
+            )
+            notes.append(note)
+            store.saveIndex(notes)
+            print("[NoteManager] Created note file: \(url.path)")
+            return note
+        } catch {
+            print("[NoteManager] Failed to create note file: \(error)")
+            return nil
+        }
     }
 
-    /// Update an existing note
-    /// - Parameter note: The updated note
+    /// Update an existing note (all fields, including body).
     func updateNote(_ note: Note) {
         guard let index = notes.firstIndex(where: { $0.id == note.id }) else {
             print("[NoteManager] Warning: Attempting to update non-existent note: \(note.id)")
@@ -65,32 +121,26 @@ class NoteManager: ObservableObject {
         updatedNote.updateModificationDate()
         notes[index] = updatedNote
 
-        persistenceManager.saveNotesDebounced(notes)
+        dirtyNoteIds.insert(note.id)
+        scheduleSave()
         print("[NoteManager] Updated note: \(note.id)")
     }
 
     /// Update note content
-    /// - Parameters:
-    ///   - noteId: ID of the note to update
-    ///   - content: New content
     func updateNoteContent(_ noteId: UUID, content: String) {
         guard let index = notes.firstIndex(where: { $0.id == noteId }) else {
             return
         }
 
         notes[index].content = content
+        notes[index].isMissing = false
         notes[index].updateModificationDate()
 
-        persistenceManager.saveNotesDebounced(notes)
+        dirtyNoteIds.insert(noteId)
+        scheduleSave()
     }
 
-    /// Update note window state (position, size, opacity)
-    /// - Parameters:
-    ///   - noteId: ID of the note to update
-    ///   - position: New window position (optional)
-    ///   - size: New window size (optional)
-    ///   - opacity: New opacity (optional)
-    ///   - isMinimized: New minimized state (optional)
+    /// Update note window state (position, size, opacity, minimized)
     func updateNoteWindow(
         _ noteId: UUID,
         position: CGPoint? = nil,
@@ -102,21 +152,13 @@ class NoteManager: ObservableObject {
             return
         }
 
-        if let position = position {
-            notes[index].position = position
-        }
-        if let size = size {
-            notes[index].size = size
-        }
-        if let opacity = opacity {
-            notes[index].opacity = opacity
-        }
-        if let isMinimized = isMinimized {
-            notes[index].isMinimized = isMinimized
-        }
+        if let position { notes[index].position = position }
+        if let size { notes[index].size = size }
+        if let opacity { notes[index].opacity = opacity }
+        if let isMinimized { notes[index].isMinimized = isMinimized }
 
         notes[index].updateModificationDate()
-        persistenceManager.saveNotesDebounced(notes)
+        scheduleSave()
     }
 
     /// Update note color theme
@@ -124,70 +166,106 @@ class NoteManager: ObservableObject {
         guard let index = notes.firstIndex(where: { $0.id == noteId }) else { return }
         notes[index].colorTheme = colorTheme
         notes[index].updateModificationDate()
-        persistenceManager.saveNotesDebounced(notes)
+        scheduleSave()
     }
 
-    /// Update note cursor position (for restoring on reopen)
+    /// Update note cursor position (restored on reopen)
     func updateNoteCursorPosition(_ noteId: UUID, cursorPosition: Int) {
         guard let index = notes.firstIndex(where: { $0.id == noteId }) else { return }
         notes[index].cursorPosition = cursorPosition
-        // Don't update modification date or trigger save — this is called during app quit
+        indexDirty = true
     }
 
-    /// Update note scroll position (for restoring on reopen)
+    /// Update note scroll position (restored on reopen)
     func updateNoteScrollTop(_ noteId: UUID, scrollTop: Double) {
         guard let index = notes.firstIndex(where: { $0.id == noteId }) else { return }
         notes[index].scrollTop = scrollTop
-        // Don't update modification date or trigger save — this is called during app quit
+        indexDirty = true
     }
 
     /// Update note always-on-top setting
     func updateNoteAlwaysOnTop(_ noteId: UUID, alwaysOnTop: Bool) {
         guard let index = notes.firstIndex(where: { $0.id == noteId }) else { return }
         notes[index].alwaysOnTop = alwaysOnTop
-        persistenceManager.saveNotesDebounced(notes)
+        scheduleSave()
     }
 
-    /// Delete a note
-    /// - Parameter noteId: ID of the note to delete
+    /// Remove a note from the app. The Markdown file is intentionally kept.
     func deleteNote(_ noteId: UUID) {
+        // Flush pending edits so closing a window never loses the last keystrokes.
+        if dirtyNoteIds.contains(noteId), let note = getNote(noteId) {
+            try? store.writeContent(note.content, for: note)
+            dirtyNoteIds.remove(noteId)
+        }
+
         notes.removeAll { $0.id == noteId }
-        persistenceManager.saveNotes(notes)
-        print("[NoteManager] Deleted note: \(noteId)")
+        store.saveIndex(notes)
+        print("[NoteManager] Removed note \(noteId) from the index (file kept on disk)")
     }
 
     /// Save a note immediately (for critical operations)
-    /// - Parameter note: The note to save
     func saveNoteImmediately(_ note: Note) {
         updateNote(note)
-        persistenceManager.saveNotes(notes)
+        flush()
+    }
+
+    /// Write every pending body edit and the index. Called on app termination.
+    func saveAll() {
+        flush(forceIndex: true)
     }
 
     /// Get a note by ID
-    /// - Parameter noteId: The note ID
-    /// - Returns: The note, if found
     func getNote(_ noteId: UUID) -> Note? {
         notes.first { $0.id == noteId }
     }
 
     // MARK: - Private Methods
 
-    /// Create a default welcome note
+    private func scheduleSave() {
+        indexDirty = true
+        saveTimer?.invalidate()
+        saveTimer = Timer.scheduledTimer(withTimeInterval: saveDelay, repeats: false) { [weak self] _ in
+            self?.flush()
+        }
+    }
+
+    private func flush(forceIndex: Bool = false) {
+        saveTimer?.invalidate()
+        saveTimer = nil
+
+        for id in dirtyNoteIds {
+            guard let note = getNote(id) else { continue }
+            do {
+                try store.writeContent(note.content, for: note)
+            } catch {
+                print("[NoteManager] Failed to write \(note.path): \(error)")
+            }
+        }
+        dirtyNoteIds.removeAll()
+
+        if indexDirty || forceIndex {
+            store.saveIndex(notes)
+            indexDirty = false
+        }
+    }
+
+    /// Create the default welcome note
     private func createDefaultNote() {
         let welcomeContent = """
-# Welcome to Sticky Notes!
+        # Welcome to Sticky Notes!
 
-This is a **markdown-enabled** sticky note.
+        This note is a Markdown file on your disk. Changes are saved straight
+        back to the file, so you can edit it here or in any other editor.
 
-## Features
-- Live markdown preview
-- Math equations: $E = mc^2$
-- Code blocks
-- And more!
+        ## Features
+        - Live markdown preview
+        - Math equations: $E = mc^2$
+        - Code blocks
+        - Files live wherever you point the notes folder (Settings, Cmd+,)
 
-Start typing to get started.
-"""
+        Start typing to get started.
+        """
 
-        createNote(content: welcomeContent)
+        createNote(content: welcomeContent, baseTitle: "Welcome")
     }
 }

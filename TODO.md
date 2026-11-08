@@ -18,3 +18,20 @@
 - Bundle identifier stays `com.mdstickynotes` (drop-in replacement; the fork and
   upstream are not meant to be installed side by side — they would share the
   same `UserDefaults` domain and clobber each other's notes).
+- Note bodies live in external Markdown files; only metadata is indexed in
+  Application Support. Remote URL notes are deliberately deferred.
+
+## Known limitations / next steps
+
+- [ ] Remote (URL) note sources. `NoteSourceKind.remoteURL` exists in the model
+  and decodes, but nothing creates or reads it yet.
+- [ ] Detect external changes while the app is running (the file is only re-read
+  at launch, so an edit in Obsidian while open gets overwritten on next save).
+- [ ] Rename the file when the first heading changes (title is currently the
+  file name at creation).
+- [ ] Relink a note whose file was moved or deleted (`isMissing` is set but there
+  is no UI yet; typing recreates the file at the old path).
+- [ ] First launch reads `~/Documents` and triggers the macOS "Files and
+  Folders" consent prompt. A Developer ID signature keeps that grant stable
+  across rebuilds; ad-hoc builds may re-prompt. Document this for users.
+

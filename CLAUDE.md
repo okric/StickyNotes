@@ -22,7 +22,7 @@ cd editor-web && npm run build && cp dist/editor.bundle.js ../build/StickyNotes.
 ## Architecture
 
 Hybrid native + web macOS app:
-- **Swift/SwiftUI**: App shell, NSPanel windows, UserDefaults persistence
+- **Swift/SwiftUI**: App shell, NSPanel windows, external Markdown files (`NotesStore`) + JSON metadata index
 - **Single shared WKWebView + CodeMirror 6**: Markdown editor with KaTeX math — one WKWebView reparented to the active (key) window, inactive windows show snapshots
 - **Bridge**: `WKScriptMessageHandler` bidirectional messaging
 
@@ -79,6 +79,9 @@ Sources/StickyNotes/App/SharedWebViewManager.swift       # 단일 WKWebView 소�
 Sources/StickyNotes/Bridge/SharedEditorBridge.swift      # noteId 기반 Swift-JS 메시지 라우팅
 Sources/StickyNotes/Views/NoteWindow/NoteWindowController.swift  # WebView reparent, snapshot/preview
 Sources/StickyNotes/App/AppCoordinator.swift             # 앱 조율 (Combine)
+Sources/StickyNotes/App/NotesStore.swift                 # index.json/settings.json + .md 읽기/쓰기
+Sources/StickyNotes/App/AppSettings.swift                # 노트 폴더 설정 (기본: ~/Documents/Sticky Notes)
+Sources/StickyNotes/Views/SettingsView.swift             # Settings 창 (Cmd+,)
 ```
 
 ### Swift-JS Bridge
