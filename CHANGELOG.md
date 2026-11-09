@@ -2,6 +2,22 @@
 
 All notable changes to MD Sticky Notes will be documented in this file.
 
+## [Unreleased]
+
+### Open Markdown files from Finder (fork)
+
+- The app registers as an alternate handler for Markdown (`net.daringfireball.markdown`:
+  `.md`, `.markdown`, `.mdown`, `.mkdn`, `.mkd`, `.mdwn`), so "Open With >
+  Sticky Notes" and `open -a StickyNotes note.md` work
+- Files are edited in place — nothing is copied or moved, so notes can live
+  anywhere on disk (Obsidian vaults, Desktop, external volumes)
+- Opening a file that already has an open note re-reads it from disk and brings
+  its window forward instead of creating a duplicate
+- `build-app.sh` registers the packaged copy with Launch Services and drops the
+  DerivedData registration, so Finder lists one app instead of several
+
+---
+
 ## [1.2.0] - 2026-11-08
 
 ### Notes storage (fork)

@@ -74,6 +74,71 @@ class NoteManager: ObservableObject {
 
     // MARK: - Public Methods
 
+    /// Extensions the app can open. Kept in sync with the `UTImportedTypeDeclarations`
+    /// entry in Info.plist.
+    static let markdownExtensions: Set<String> = [
+        "md", "markdown", "mdown", "mkdn", "mkd", "mdwn"
+    ]
+
+    static func isMarkdownFile(_ url: URL) -> Bool {
+        url.isFileURL && markdownExtensions.contains(url.pathExtension.lowercased())
+    }
+
+    /// Register an existing Markdown file (already on disk, anywhere) and return
+    /// its note. If the file is already open, its body is re-read from disk so
+    /// external edits show up, and the existing note is returned.
+    @discardableResult
+    func addNote(forFileURL url: URL, position: CGPoint = CGPoint(x: 100, y: 100)) -> Note? {
+        guard Self.isMarkdownFile(url),
+              FileManager.default.fileExists(atPath: url.path) else {
+            print("[NoteManager] Not an openable Markdown file: \(url.path)")
+            return nil
+        }
+
+        if let index = notes.firstIndex(where: {
+            Self.sameFile(URL(fileURLWithPath: $0.path), url)
+        }) {
+            if let content = store.readContent(for: notes[index]) {
+                notes[index].content = content
+                notes[index].isMissing = false
+            }
+            return notes[index]
+        }
+
+        guard let content = try? String(contentsOf: url, encoding: .utf8) else {
+            print("[NoteManager] Could not read \(url.path) as UTF-8")
+            return nil
+        }
+
+        let colors = NoteColor.allCases
+        let note = Note(
+            path: url.path,
+            title: url.deletingPathExtension().lastPathComponent,
+            content: content,
+            position: position,
+            colorTheme: colors[notes.count % colors.count].rawValue
+        )
+        notes.append(note)
+        store.saveIndex(notes)
+        print("[NoteManager] Opened external file: \(url.path)")
+        return note
+    }
+
+    /// True when both URLs point at the same file, even through a symlinked
+    /// folder (`/tmp` vs `/private/tmp`, iCloud Drive aliases) or a case
+    /// difference on a case-insensitive volume.
+    private static func sameFile(_ a: URL, _ b: URL) -> Bool {
+        if a.path.compare(b.path, options: .caseInsensitive) == .orderedSame {
+            return true
+        }
+        let keys: Set<URLResourceKey> = [.fileResourceIdentifierKey]
+        guard let idA = try? a.resourceValues(forKeys: keys).fileResourceIdentifier,
+              let idB = try? b.resourceValues(forKeys: keys).fileResourceIdentifier else {
+            return false
+        }
+        return idA.isEqual(idB)
+    }
+
     /// Create a new note file in the default folder and register it.
     @discardableResult
     func createNote(

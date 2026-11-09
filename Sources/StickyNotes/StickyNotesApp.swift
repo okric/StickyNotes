@@ -7,6 +7,11 @@ import AppKit
 class AppDelegate: NSObject, NSApplicationDelegate {
     let coordinator = AppCoordinator()
 
+    /// Files handed over by Launch Services before the app finished launching
+    /// (Finder "Open With", drag onto the Dock icon, `open -a StickyNotes file.md`).
+    private var pendingOpenURLs: [URL] = []
+    private var didFinishLaunching = false
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         return false
     }
@@ -18,7 +23,32 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        coordinator.restoreLastActiveNote()
+        didFinishLaunching = true
+        // Opening a file counts as user intent; don't steal focus back to the
+        // last active note afterwards.
+        if !drainPendingOpenURLs() {
+            coordinator.restoreLastActiveNote()
+        }
+    }
+
+    /// Launch Services delivers files here, both at launch and for a running app.
+    func application(_ application: NSApplication, open urls: [URL]) {
+        pendingOpenURLs.append(contentsOf: urls)
+        if didFinishLaunching {
+            drainPendingOpenURLs()
+        }
+    }
+
+    @discardableResult
+    private func drainPendingOpenURLs() -> Bool {
+        guard !pendingOpenURLs.isEmpty else { return false }
+        let urls = pendingOpenURLs
+        pendingOpenURLs.removeAll()
+        let opened = coordinator.openFiles(urls)
+        if opened {
+            NSApp.activate(ignoringOtherApps: true)
+        }
+        return opened
     }
 
     func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {

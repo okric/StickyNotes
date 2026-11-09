@@ -60,6 +60,12 @@ rm -rf "$APP_DIR"
 cp -R "$DERIVED/Build/Products/Release/$APP_NAME.app" "$APP_DIR"
 codesign --verify --deep --strict "$APP_DIR"
 
+# Point Finder's "Open With > Sticky Notes" at this copy. xcodebuild registers
+# its DerivedData build; leaving both registered duplicates the entry.
+LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister"
+"$LSREGISTER" -u "$DERIVED/Build/Products/Release/$APP_NAME.app" >/dev/null 2>&1 || true
+"$LSREGISTER" -f "$APP_DIR" >/dev/null 2>&1 || true
+
 VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP_DIR/Contents/Info.plist")
 echo "✅ $APP_NAME.app $VERSION built at: $APP_DIR"
 
@@ -108,6 +114,8 @@ sync
 
 # Unmount
 hdiutil detach "$MOUNT_DIR" >/dev/null
+# Mounting the DMG registers its copy; drop it so Finder keeps one entry.
+"$LSREGISTER" -u "$MOUNT_DIR/StickyNotes.app" >/dev/null 2>&1 || true
 
 # Convert to compressed read-only DMG
 hdiutil convert "$DMG_TMP" -format UDZO -o "$DMG_PATH" >/dev/null

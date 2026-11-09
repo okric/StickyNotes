@@ -34,4 +34,14 @@
 - [ ] First launch reads `~/Documents` and triggers the macOS "Files and
   Folders" consent prompt. A Developer ID signature keeps that grant stable
   across rebuilds; ad-hoc builds may re-prompt. Document this for users.
+- [ ] Opening `.md` files across the disk works only because the app is **not
+  sandboxed**. If it is ever sandboxed, file-open needs
+  `com.apple.security.files.user-selected.read-write` plus security-scoped
+  bookmarks so notes outside the notes folder survive relaunch.
+- [ ] Files in folders macOS protects (Desktop, Documents, Downloads, iCloud
+  Drive) trigger the TCC prompt on first open — expected, but worth a README
+  note.
+- [ ] An iCloud/OneDrive file evicted to the cloud reads as empty
+  (`String(contentsOf:)` fails); trigger a download with
+  `NSFileCoordinator`/`startDownloadingUbiquitousItem` before reading.
 

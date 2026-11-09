@@ -90,6 +90,16 @@ Sources/StickyNotes/Views/SettingsView.swift             # Settings 창 (Cmd+,)
 - **Swift → JS**: `window.setContent(content)`, `window.getContent()`, `window.openSearch()`, `window.serializeState()`, `window.restoreState(json)`, `window.setCurrentNoteId(id)`, `window.prepareForSnapshot()` (snapshotMode + transitions 끄고 커서→0 + blur), `window.endSnapshotMode()` (snapshotMode 해제 + transitions 복원)
 - Console.log 인터셉트: `WKUserScript` at document start → Swift 콘솔로 전달
 
+### Finder "Open With" (문서 타입)
+
+- `Info.plist`: `CFBundleDocumentTypes` (role `Editor`, `LSHandlerRank` `Alternate`) +
+  `UTImportedTypeDeclarations` (`net.daringfireball.markdown`: md/markdown/mdown/mkdn/mkd/mdwn)
+- `AppDelegate.application(_:open:)` → `AppCoordinator.openFiles` →
+  `NoteManager.addNote(forFileURL:)`. 파일은 복사/이동하지 않고 원래 경로에서 편집
+- 이미 열린 파일이면 디스크에서 다시 읽고 기존 창을 앞으로 (중복 노트 없음)
+- 앱은 샌드박스가 아님 → 디스크 어디든 접근 가능. 샌드박스로 전환하면
+  security-scoped bookmark가 필요
+
 ## Implementation Status
 
 - **Phase 1 ✅**: App structure, NSPanel windows, persistence, WKWebView

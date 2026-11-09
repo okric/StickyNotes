@@ -65,6 +65,36 @@ class AppCoordinator: ObservableObject {
         noteManager.deleteNote(noteId)
     }
 
+    /// Open Markdown files handed over by Launch Services (Finder "Open With",
+    /// drag onto the Dock icon, `open -a StickyNotes note.md`). Each file gets a
+    /// note; a file that already has a live note just brings its window forward.
+    /// - Returns: `true` if at least one file produced a note.
+    @discardableResult
+    func openFiles(_ urls: [URL]) -> Bool {
+        var opened = false
+        for url in urls where NoteManager.isMarkdownFile(url) {
+            if openFile(url) != nil { opened = true }
+        }
+        return opened
+    }
+
+    /// Open a single Markdown file at an arbitrary path. Files are not moved or
+    /// copied; the note keeps pointing at its original location.
+    @discardableResult
+    func openFile(_ url: URL) -> Note? {
+        let canonical = url.standardizedFileURL.resolvingSymlinksInPath()
+        guard let note = noteManager.addNote(
+            forFileURL: canonical,
+            position: calculateNewNotePosition()
+        ) else {
+            NSSound.beep()
+            return nil
+        }
+        windowManager.openWindow(for: note, coordinator: self)
+        windowManager.bringToFront(note.id)
+        return note
+    }
+
     /// Handle note content changes from the editor
     func handleContentChange(noteId: UUID, content: String) {
         noteManager.updateNoteContent(noteId, content: content)
