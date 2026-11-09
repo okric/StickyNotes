@@ -36,6 +36,12 @@ struct Note: Identifiable, Equatable {
     /// Window position on screen
     var position: CGPoint
 
+    /// UUID of the display the window was last on (see ScreenGeometry)
+    var screenUUID: String?
+
+    /// Window origin relative to that display's origin
+    var screenOffset: CGPoint?
+
     /// Window size on screen
     var size: CGSize
 
@@ -76,6 +82,8 @@ struct Note: Identifiable, Equatable {
         content: String = "",
         isMissing: Bool = false,
         position: CGPoint = CGPoint(x: 100, y: 100),
+        screenUUID: String? = nil,
+        screenOffset: CGPoint? = nil,
         size: CGSize = CGSize(width: 300, height: 360),
         isMinimized: Bool = false,
         opacity: Double = 0.95,
@@ -93,6 +101,8 @@ struct Note: Identifiable, Equatable {
         self.content = content
         self.isMissing = isMissing
         self.position = position
+        self.screenUUID = screenUUID
+        self.screenOffset = screenOffset
         self.size = size
         self.isMinimized = isMinimized
         self.opacity = opacity
@@ -116,6 +126,7 @@ extension Note: Codable {
     enum CodingKeys: String, CodingKey {
         case id, sourceKind, path, title, position, size, isMinimized, opacity
         case colorTheme, cursorPosition, scrollTop, alwaysOnTop, createdAt, modifiedAt
+        case screenUUID, screenOffset
     }
 
     init(from decoder: Decoder) throws {
@@ -132,6 +143,13 @@ extension Note: Codable {
         // Decode CGPoint
         let positionDict = try container.decodeIfPresent([String: Double].self, forKey: .position) ?? [:]
         position = CGPoint(x: positionDict["x"] ?? 100, y: positionDict["y"] ?? 100)
+
+        screenUUID = try container.decodeIfPresent(String.self, forKey: .screenUUID)
+        if let offsetDict = try container.decodeIfPresent([String: Double].self, forKey: .screenOffset) {
+            screenOffset = CGPoint(x: offsetDict["x"] ?? 0, y: offsetDict["y"] ?? 0)
+        } else {
+            screenOffset = nil
+        }
 
         // Decode CGSize
         let sizeDict = try container.decodeIfPresent([String: Double].self, forKey: .size) ?? [:]
@@ -157,6 +175,14 @@ extension Note: Codable {
         // Encode CGPoint as dictionary
         let positionDict = ["x": position.x, "y": position.y]
         try container.encode(positionDict, forKey: .position)
+
+        try container.encodeIfPresent(screenUUID, forKey: .screenUUID)
+        if let screenOffset {
+            try container.encode(
+                ["x": screenOffset.x, "y": screenOffset.y],
+                forKey: .screenOffset
+            )
+        }
 
         // Encode CGSize as dictionary
         let sizeDict = ["width": size.width, "height": size.height]

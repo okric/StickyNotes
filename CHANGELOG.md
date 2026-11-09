@@ -15,6 +15,18 @@ All notable changes to MD Sticky Notes will be documented in this file.
   from Finder / Launchpad left by Debug, DerivedData and DMG copies
 - Version bumped to 1.3.0 (build 10300)
 
+### Multi-display windows (fork)
+
+- Notes remember the display they are on (UUID) and their offset on it, so they
+  reopen on the same monitor after the arrangement, resolution or scale changes
+- Fixed a note that lived on a secondary display reopening on the main screen:
+  `NSWindow` clamps a fully off-main rect at init, so the position is applied
+  once the window exists
+- Titlebar dragging moves the window by the pointer delta in global points, so
+  crossing displays (including negative origins and mixed 1x/2x scaling) no
+  longer re-anchors or jumps; AppKit's frame constraint is disabled for note
+  panels (restore clamps instead)
+
 ### Open Markdown files from Finder (fork)
 
 - **File > Open… (Cmd+O)** picks one or more Markdown files anywhere on disk

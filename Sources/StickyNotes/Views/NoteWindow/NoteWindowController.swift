@@ -29,10 +29,20 @@ class NoteWindowController: NSWindowController, NSWindowDelegate {
         self.note = note
         self.coordinator = coordinator
 
+        // NSWindow clamps a rect that lies wholly on a secondary display to the
+        // main screen at init time, so create where AppKit is happy and move
+        // the window to its remembered spot right after (before showing).
+        let origin = ScreenGeometry.restoredOrigin(
+            position: note.position,
+            screenUUID: note.screenUUID,
+            screenOffset: note.screenOffset,
+            size: note.size
+        )
+
         // Create the panel (floating window)
-        let panel = NSPanel(
+        let panel = NotePanel(
             contentRect: NSRect(
-                origin: note.position,
+                origin: origin,
                 size: note.size
             ),
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .utilityWindow, .fullSizeContentView],
@@ -41,6 +51,8 @@ class NoteWindowController: NSWindowController, NSWindowDelegate {
         )
 
         super.init(window: panel)
+
+        panel.setFrameOrigin(origin)
 
         setupPanel(panel)
         setupTitlebarAccessory(panel)
@@ -419,7 +431,14 @@ class NoteWindowController: NSWindowController, NSWindowDelegate {
 
     func windowDidMove(_ notification: Notification) {
         guard let window = window else { return }
-        coordinator?.handleWindowStateChange(noteId: note.id, position: window.frame.origin)
+        let frame = window.frame
+        let screen = ScreenGeometry.screen(for: frame)
+        coordinator?.handleWindowStateChange(
+            noteId: note.id,
+            position: frame.origin,
+            screenUUID: screen.flatMap { ScreenGeometry.uuid(for: $0) },
+            screenOffset: screen.map { ScreenGeometry.offset(of: frame.origin, on: $0) }
+        )
     }
 
     func windowDidMiniaturize(_ notification: Notification) {
@@ -478,6 +497,13 @@ private class TitlebarControlsView: NSView {
 private class TitlebarCursorView: NSView {
     private var trackingArea: NSTrackingArea?
 
+    /// Window origin and pointer location at mouse-down, in global points.
+    /// Dragging is done here instead of forwarding to NSWindow so crossing
+    /// displays (including mixed 1x/2x and negative origins) moves the window
+    /// by exactly the pointer delta, with no AppKit re-anchoring.
+    private var dragOrigin: NSPoint?
+    private var dragStart: NSPoint?
+
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
         if let existing = trackingArea {
@@ -497,14 +523,41 @@ private class TitlebarCursorView: NSView {
     }
 
     override func mouseDown(with event: NSEvent) {
-        nextResponder?.mouseDown(with: event)
-    }
+        guard let window else { return }
 
-    override func mouseUp(with event: NSEvent) {
-        nextResponder?.mouseUp(with: event)
+        if event.clickCount == 2 {
+            switch UserDefaults.standard.string(forKey: "AppleActionOnDoubleClick") {
+            case "Minimize": window.miniaturize(nil)
+            case "None": break
+            default: window.zoom(nil)
+            }
+            return
+        }
+
+        // Arm the drag before activating the window: activation attaches the
+        // shared WebView, which spins the run loop and can deliver the first
+        // drag events early.
+        dragOrigin = window.frame.origin
+        dragStart = NSEvent.mouseLocation
+
+        if !window.isKeyWindow {
+            window.makeKeyAndOrderFront(nil)
+        }
     }
 
     override func mouseDragged(with event: NSEvent) {
-        nextResponder?.mouseDragged(with: event)
+        guard let window, let origin = dragOrigin, let start = dragStart else { return }
+        let current = NSEvent.mouseLocation
+        window.setFrameOrigin(
+            NSPoint(
+                x: origin.x + current.x - start.x,
+                y: origin.y + current.y - start.y
+            )
+        )
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        dragOrigin = nil
+        dragStart = nil
     }
 }

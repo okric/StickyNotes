@@ -122,13 +122,17 @@ class AppCoordinator: ObservableObject {
         noteId: UUID,
         position: CGPoint? = nil,
         size: CGSize? = nil,
-        isMinimized: Bool? = nil
+        isMinimized: Bool? = nil,
+        screenUUID: String? = nil,
+        screenOffset: CGPoint? = nil
     ) {
         noteManager.updateNoteWindow(
             noteId,
             position: position,
             size: size,
-            isMinimized: isMinimized
+            isMinimized: isMinimized,
+            screenUUID: screenUUID,
+            screenOffset: screenOffset
         )
     }
 

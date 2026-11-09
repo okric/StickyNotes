@@ -154,6 +154,7 @@ Sources/StickyNotes/Views/SettingsView.swift             # Settings 창 (Cmd+,)
 41. **`suppressContentChange` 패턴**: `setContent`/`restoreState`/`setContentForSnapshot`에서 `clearTimeout(debounceTimer)` + `suppressContentChange=true` → `dispatch()` → `suppressContentChange=false`. CodeMirror `dispatch`는 동기적이므로 `updateListener`가 플래그 활성 중에 호출됨. 프로그래밍적 콘텐츠 교체가 `contentChanged` bridge 메시지를 발생시키지 않도록 방어. 없으면: (1) pre-rendering 중 active note 콘텐츠 덮어쓰기, (2) 노트 전환 시 이전 노트의 디바운스가 새 noteId로 잘못된 콘텐츠 저장
 42. **`attachWebView` isReady 가드**: 에디터가 `markReady()` 전에 다른 윈도우로 전환되면 `serializeState()`가 빈 에디터 상태(`""`)를 직렬화하여 기존 콘텐츠 삭제. `manager.isReady` 체크로 방어 — false면 직렬화/스냅샷 건너뛰고 text preview 표시
 43. **`cacheSerializedState` 전체 상태 저장**: `serializeState()` JSON에는 `{doc, anchor, head, scrollTop}` 포함. 기존에는 `doc`만 추출하여 NoteManager에 저장 → 앱 재시작 시 cursor/scroll 소실. `anchor` → `updateNoteCursorPosition`, `scrollTop` → `updateNoteScrollTop` 추가로 영속화. `switchToNote`의 중복 코드도 `cacheSerializedState` 재사용으로 정리
+44. **멀티 모니터 (음수 원점 + 1x/2x 혼합)**: `NSWindow.init(contentRect:)`는 보조 디스플레이에 완전히 놓인 rect를 메인 스크린으로 clamp한다(실측: x=-2500 → 860). 생성 직후 `panel.setFrameOrigin(저장된 위치)`로 재적용해야 한다. 저장은 `screenUUID`(CGDisplayCreateUUIDFromDisplayID) + 화면 원점 기준 `screenOffset`; 복원 시 UUID로 화면을 찾고 없으면 겹침/클램프. 창 이동은 titlebar overlay에서 `NSEvent.mouseLocation` 전역 델타로 직접 처리(AppKit drag loop은 디스플레이 경계에서 re-anchor할 수 있음). `NotePanel.constrainFrameRect`는 제안된 프레임을 그대로 반환 — 기본 constrain은 화면 밖 프레임을 메인으로 끌어와 "점프"처럼 보인다
 
 ## Lezer Markdown Node Names
 

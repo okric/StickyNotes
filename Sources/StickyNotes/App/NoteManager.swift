@@ -211,7 +211,9 @@ class NoteManager: ObservableObject {
         position: CGPoint? = nil,
         size: CGSize? = nil,
         opacity: Double? = nil,
-        isMinimized: Bool? = nil
+        isMinimized: Bool? = nil,
+        screenUUID: String? = nil,
+        screenOffset: CGPoint? = nil
     ) {
         guard let index = notes.firstIndex(where: { $0.id == noteId }) else {
             return
@@ -221,6 +223,8 @@ class NoteManager: ObservableObject {
         if let size { notes[index].size = size }
         if let opacity { notes[index].opacity = opacity }
         if let isMinimized { notes[index].isMinimized = isMinimized }
+        if let screenUUID { notes[index].screenUUID = screenUUID }
+        if let screenOffset { notes[index].screenOffset = screenOffset }
 
         notes[index].updateModificationDate()
         scheduleSave()

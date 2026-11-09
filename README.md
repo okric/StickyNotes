@@ -22,6 +22,7 @@ A native macOS sticky note app with Obsidian-style markdown live preview, built 
 ### Sticky Note Experience
 - **Plain Markdown files**: every note is a `.md` file in a folder you choose (Obsidian vaults work)
 - **Floating Windows**: Always visible while you work
+- **Multi-Display**: notes remember their monitor and position across reused and resized displays
 - **Pin on Top**: Keep important notes above all windows (Cmd+Shift+P)
 - **Multiple Colors**: Yellow, pink, blue, green, purple, orange
 - **Adjustable Opacity**: Transparency slider for each note
