@@ -8,8 +8,8 @@ settings:
   base:
     SWIFT_VERSION: "5.9"
     MACOSX_DEPLOYMENT_TARGET: "12.0"
-    MARKETING_VERSION: "1.2.0"
-    CURRENT_PROJECT_VERSION: "10200"
+    MARKETING_VERSION: "1.3.0"
+    CURRENT_PROJECT_VERSION: "10300"
     # Local builds sign ad-hoc. Pass CODESIGN_IDENTITY to build-app.sh (or set
     # CODE_SIGN_IDENTITY in Xcode) for a Developer ID / notarizable build.
     CODE_SIGN_STYLE: Manual

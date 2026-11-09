@@ -2,7 +2,16 @@
 
 All notable changes to MD Sticky Notes will be documented in this file.
 
-## [Unreleased]
+## [1.3.0] - 2026-11-08
+
+### App icon and notarized releases (fork)
+
+- Bundle an app icon (`AppIcon.icns`) via `CFBundleIconFile`
+- `build-app.sh` accepts `NOTARY_PROFILE` to notarize, staple and Gatekeeper-check
+  the signed app before the DMG is created
+- `Scripts/clean-launchservices.sh` removes duplicate "Sticky Notes" entries
+  from Finder / Launchpad left by Debug, DerivedData and DMG copies
+- Version bumped to 1.3.0 (build 10300)
 
 ### Open Markdown files from Finder (fork)
 

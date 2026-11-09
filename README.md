@@ -148,6 +148,32 @@ cd editor-web && npm run build && \
   open ../build/StickyNotes.app
 ```
 
+### Releasing
+
+```bash
+# One-time: store notarization credentials in the keychain
+xcrun notarytool store-credentials "MDStickyNotes" \
+  --apple-id you@example.com --team-id TEAMID --password <app-specific-password>
+
+# Signed, notarized, stapled app + DMG
+CODESIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
+  NOTARY_PROFILE=MDStickyNotes ./build-app.sh
+```
+
+Without `NOTARY_PROFILE` the build is signed but not notarized, which is fine
+for local use. Gatekeeper must accept the app before publishing:
+`spctl -a -t exec -vv build/StickyNotes.app`.
+
+`xcodebuild` and every Debug/Release/DerivedData copy registers itself with
+Launch Services, which shows up as several "Sticky Notes" apps in Finder and
+Launchpad. Prune them with:
+
+```bash
+./Scripts/clean-launchservices.sh --purge
+```
+
+Running copies re-register themselves, so quit stale instances first.
+
 ## License
 
 MIT

@@ -2,16 +2,17 @@
 
 ## Release pipeline
 
-- [ ] Wire signed + notarized releases (not started; `build-app.sh` still
-      defaults to ad-hoc signing, but now drives `xcodebuild`).
-      - `build-app.sh` already accepts `CODESIGN_IDENTITY` and enables the
-        hardened runtime; add notarize/staple/`spctl` steps around it.
-      - Follow `~/Projects/Wiki/how-to/notarized-distribution-and-sparkle-updates.md`
-        and `~/Projects/Wiki/how-to/creating-styled-macos-release-dmg.md`.
-      - Hard requirement: never upload a build that `spctl -a -t exec` rejects.
-      - Verify the app extracted from the published DMG, not the staged copy.
+- [ ] Notarize the 1.3.0 build. Signing, stapling and the `spctl` gate are
+      wired (`NOTARY_PROFILE=... ./build-app.sh`), but this machine has no
+      `notarytool` keychain profile yet. One-time setup:
+      `xcrun notarytool store-credentials "MDStickyNotes" --apple-id … --team-id TEAMID --password …`
+- [ ] Publish: tag `v1.3.0`, `gh release create`, upload `build/MDStickyNotes.dmg`,
+      then `spctl -a -t exec -vv` the app extracted from the downloaded DMG.
 - [ ] Decide whether to add Sparkle 2 auto-updates (needs `SUFeedURL`,
       `SUPublicEDKey`, appcast per release).
+- [x] `build-app.sh` accepts `CODESIGN_IDENTITY`, enables the hardened runtime,
+      notarizes/staples/gates when `NOTARY_PROFILE` is set, and stops Xcode from
+      injecting `get-task-allow` into distribution builds.
 
 ## Decisions
 
@@ -23,25 +24,10 @@
 
 ## Known limitations / next steps
 
-- [ ] Remote (URL) note sources. `NoteSourceKind.remoteURL` exists in the model
-  and decodes, but nothing creates or reads it yet.
-- [ ] Detect external changes while the app is running (the file is only re-read
-  at launch, so an edit in Obsidian while open gets overwritten on next save).
-- [ ] Rename the file when the first heading changes (title is currently the
-  file name at creation).
-- [ ] Relink a note whose file was moved or deleted (`isMissing` is set but there
-  is no UI yet; typing recreates the file at the old path).
-- [ ] First launch reads `~/Documents` and triggers the macOS "Files and
-  Folders" consent prompt. A Developer ID signature keeps that grant stable
-  across rebuilds; ad-hoc builds may re-prompt. Document this for users.
-- [ ] Opening `.md` files across the disk works only because the app is **not
-  sandboxed**. If it is ever sandboxed, file-open needs
-  `com.apple.security.files.user-selected.read-write` plus security-scoped
-  bookmarks so notes outside the notes folder survive relaunch.
-- [ ] Files in folders macOS protects (Desktop, Documents, Downloads, iCloud
-  Drive) trigger the TCC prompt on first open — expected, but worth a README
-  note.
-- [ ] An iCloud/OneDrive file evicted to the cloud reads as empty
-  (`String(contentsOf:)` fails); trigger a download with
-  `NSFileCoordinator`/`startDownloadingUbiquitousItem` before reading.
+See [FUTURE_WORK.md](FUTURE_WORK.md) for the full list, including the sandbox
+and TCC caveats, external-edit detection, iCloud placeholders, and the Notes
+API proposal (`~/Projects/Notes/.work/PLAN-sticky-client.md`).
 
+- [ ] Remote (URL) note sources, see the proposal above.
+- [ ] Relink a note whose file was moved or deleted.
+- [ ] Rename the backing file when the first heading changes.
