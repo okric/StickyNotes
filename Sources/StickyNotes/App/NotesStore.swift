@@ -121,6 +121,35 @@ final class NotesStore {
         try Data(content.utf8).write(to: url, options: .atomic)
     }
 
+    // MARK: - Remote note cache
+
+    /// Remote notes keep their last body here so they open offline.
+    var remoteCacheDirectory: URL {
+        baseDirectory.appendingPathComponent("remote", isDirectory: true)
+    }
+
+    func remoteCacheURL(for note: Note) -> URL {
+        remoteCacheDirectory.appendingPathComponent("\(note.id.uuidString).md")
+    }
+
+    func readRemoteContent(for note: Note) -> String? {
+        try? String(contentsOf: remoteCacheURL(for: note), encoding: .utf8)
+    }
+
+    func writeRemoteContent(_ content: String, for note: Note) throws {
+        let url = remoteCacheURL(for: note)
+        try FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try Data(content.utf8).write(to: url, options: .atomic)
+    }
+
+    /// Deletes the cached body when a remote note is removed from the index.
+    func removeRemoteContent(for note: Note) {
+        try? FileManager.default.removeItem(at: remoteCacheURL(for: note))
+    }
+
     /// Creates a new empty Markdown file and returns its URL.
     func createNoteFile(in folder: URL, baseTitle: String, content: String) throws -> URL {
         try fileManager.createDirectory(at: folder, withIntermediateDirectories: true)

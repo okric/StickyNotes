@@ -6,7 +6,7 @@
 //   HighlightStyle                  — 보조 토큰 색상
 //   EditorView.theme()              — CSS 클래스 정의
 
-import { EditorState, StateField, EditorSelection } from '@codemirror/state';
+import { EditorState, StateField, EditorSelection, Compartment } from '@codemirror/state';
 import { EditorView, keymap, Decoration, WidgetType, ViewPlugin } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { markdown } from '@codemirror/lang-markdown';
@@ -1354,6 +1354,7 @@ window.initColorPicker = window.initNoteControls;
 
 let editorView;
 let debounceTimer;
+const readOnlyCompartment = new Compartment();
 
 function initEditor(initialContent = '') {
   log('Initializing editor...');
@@ -1364,6 +1365,7 @@ function initEditor(initialContent = '') {
       history(),
       keymap.of([...blockMathNavKeymap, ...formattingKeymap, ...searchKeymap, ...defaultKeymap, ...historyKeymap]),
       markdown({ extensions: GFM, codeLanguages: findLanguage }),
+      readOnlyCompartment.of([]),
       syntaxHighlighting(markdownHighlightStyle),
       syntaxHighlighting(defaultHighlightStyle),  // Code block syntax colors
       markdownDecoPlugin,
@@ -1451,6 +1453,16 @@ window.setContent = function (content) {
 
 window.getContent = function () {
   return editorView ? editorView.state.doc.toString() : '';
+};
+
+// Remote notes are read-only until the write path (bearer token) lands.
+window.setReadOnly = function (readOnly) {
+  if (!editorView) return;
+  editorView.dispatch({
+    effects: readOnlyCompartment.reconfigure(
+      readOnly ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : []
+    ),
+  });
 };
 
 // Open search panel (called from Swift via Cmd+F menu)

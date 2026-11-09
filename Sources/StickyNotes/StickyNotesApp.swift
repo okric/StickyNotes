@@ -101,6 +101,11 @@ struct MenuBarCommands: Scene {
                 }
                 .keyboardShortcut("o", modifiers: .command)
 
+                Button("Open Note URL…") {
+                    coordinator.promptOpenRemoteURL()
+                }
+                .keyboardShortcut("o", modifiers: [.command, .shift])
+
                 Divider()
 
                 Button("Show All Notes") {

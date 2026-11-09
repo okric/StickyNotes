@@ -28,6 +28,7 @@ A native macOS sticky note app with Obsidian-style markdown live preview, built 
 - **Adjustable Opacity**: Transparency slider for each note
 - **Auto-Save**: Edits are written straight back to the file
 - **Open With**: open any `.md` file from Finder (or `open -a StickyNotes note.md`); it is edited in place, wherever it lives
+- **Remote Notes (read-only)**: File > Open Note URL… (Cmd+Shift+O) opens a shared Notes link (`…/n/<id>`) as a sticky and polls for updates
 - **Notes Folder Settings**: pick any folder, or create `~/Documents/Sticky Notes` (Cmd+,)
 
 ### Keyboard Shortcuts
@@ -35,6 +36,7 @@ A native macOS sticky note app with Obsidian-style markdown live preview, built 
 |----------|--------|
 | Cmd+N | New note |
 | Cmd+O | Open Markdown files |
+| Cmd+Shift+O | Open note URL |
 | Cmd+Shift+P | Pin on top |
 | Cmd+B / I / K | Bold / Italic / Link |
 | Cmd+F | Find in note |
@@ -102,7 +104,8 @@ Notes are **not** kept in a database or `UserDefaults`:
 
 ~/Library/Application Support/com.mdstickynotes/
 ├── index.json                     # per-note metadata: path, window frame, color, cursor
-└── settings.json                  # chosen notes folder, migration flag
+├── settings.json                  # chosen notes folder, migration flag
+└── remote/                        # cached bodies of Notes API notes (read-only)
 ```
 
 - The index stores only presentation metadata — never note bodies.

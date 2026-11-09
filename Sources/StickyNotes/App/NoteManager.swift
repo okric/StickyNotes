@@ -61,6 +61,17 @@ class NoteManager: ObservableObject {
 
     private func loadingContent(_ note: Note) -> Note {
         var note = note
+
+        if note.isRemote {
+            // Remote notes come from the Notes API; the cached body is the
+            // offline copy until the first successful fetch.
+            if let cached = store.readRemoteContent(for: note) {
+                note.content = cached
+            }
+            note.isMissing = false
+            return note
+        }
+
         if let content = store.readContent(for: note) {
             note.content = content
             note.isMissing = false
@@ -137,6 +148,71 @@ class NoteManager: ObservableObject {
             return false
         }
         return idA.isEqual(idB)
+    }
+
+    /// Register a note served by the Notes API. `link.pageURL` is the share URL
+    /// that identifies it; the body is cached locally for offline opens.
+    @discardableResult
+    func addRemoteNote(
+        link: RemoteNoteLink,
+        remoteNoteID: String,
+        title: String,
+        content: String,
+        revision: String,
+        position: CGPoint = CGPoint(x: 100, y: 100)
+    ) -> Note {
+        if let index = notes.firstIndex(where: {
+            $0.isRemote && $0.remoteShareID == link.shareID && $0.remoteBaseURL == link.baseURL.absoluteString
+        }) {
+            notes[index].content = content
+            notes[index].title = title
+            notes[index].remoteNoteID = remoteNoteID
+            notes[index].remoteRevision = revision
+            notes[index].isMissing = false
+            try? store.writeRemoteContent(content, for: notes[index])
+            return notes[index]
+        }
+
+        let colors = NoteColor.allCases
+        let note = Note(
+            sourceKind: .remoteURL,
+            path: link.pageURL.absoluteString,
+            title: title,
+            content: content,
+            position: position,
+            remoteBaseURL: link.baseURL.absoluteString,
+            remoteNoteID: remoteNoteID,
+            remoteShareID: link.shareID,
+            remoteRevision: revision,
+            colorTheme: colors[notes.count % colors.count].rawValue
+        )
+        notes.append(note)
+        try? store.writeRemoteContent(content, for: note)
+        store.saveIndex(notes)
+        print("[NoteManager] Opened remote note: \(note.path)")
+        return note
+    }
+
+    /// Apply a newer revision fetched from the API.
+    func updateRemoteNote(
+        _ noteId: UUID,
+        title: String?,
+        content: String,
+        revision: String
+    ) {
+        guard let index = notes.firstIndex(where: { $0.id == noteId }) else { return }
+        notes[index].content = content
+        notes[index].remoteRevision = revision
+        if let title { notes[index].title = title }
+        notes[index].isMissing = false
+        notes[index].updateModificationDate()
+        try? store.writeRemoteContent(content, for: notes[index])
+        store.saveIndex(notes)
+    }
+
+    /// Remote notes that are currently open (the index only holds open notes).
+    var remoteNotes: [Note] {
+        notes.filter { $0.isRemote }
     }
 
     /// Create a new note file in the default folder and register it.
@@ -263,10 +339,17 @@ class NoteManager: ObservableObject {
     func deleteNote(_ noteId: UUID) {
         // Flush pending edits so closing a window never loses the last keystrokes.
         if dirtyNoteIds.contains(noteId), let note = getNote(noteId) {
-            try? store.writeContent(note.content, for: note)
+            if note.isRemote {
+                try? store.writeRemoteContent(note.content, for: note)
+            } else {
+                try? store.writeContent(note.content, for: note)
+            }
             dirtyNoteIds.remove(noteId)
         }
 
+        if let note = getNote(noteId), note.isRemote {
+            store.removeRemoteContent(for: note)
+        }
         notes.removeAll { $0.id == noteId }
         store.saveIndex(notes)
         print("[NoteManager] Removed note \(noteId) from the index (file kept on disk)")
@@ -305,7 +388,11 @@ class NoteManager: ObservableObject {
         for id in dirtyNoteIds {
             guard let note = getNote(id) else { continue }
             do {
-                try store.writeContent(note.content, for: note)
+                if note.isRemote {
+                    try store.writeRemoteContent(note.content, for: note)
+                } else {
+                    try store.writeContent(note.content, for: note)
+                }
             } catch {
                 print("[NoteManager] Failed to write \(note.path): \(error)")
             }

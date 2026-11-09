@@ -23,6 +23,10 @@ class AppCoordinator: ObservableObject {
     private let store: NotesStore
     private var cancellables = Set<AnyCancellable>()
 
+    /// Polls open remote notes for newer revisions.
+    private var remotePollTimer: Timer?
+    private var isPollingRemote = false
+
     // MARK: - Initialization
 
     init() {
@@ -38,6 +42,11 @@ class AppCoordinator: ObservableObject {
 
         setupBindings()
         openInitialWindows()
+        startRemotePolling()
+    }
+
+    deinit {
+        remotePollTimer?.invalidate()
     }
 
     // MARK: - Public Methods
@@ -82,15 +91,21 @@ class AppCoordinator: ObservableObject {
         openFiles(panel.urls)
     }
 
-    /// Open Markdown files handed over by Launch Services (Finder "Open With",
-    /// drag onto the Dock icon, `open -a StickyNotes note.md`). Each file gets a
-    /// note; a file that already has a live note just brings its window forward.
-    /// - Returns: `true` if at least one file produced a note.
+    /// Open Markdown files or note URLs handed over by Launch Services (Finder
+    /// "Open With", drag onto the Dock icon, `open -a StickyNotes note.md`,
+    /// `open -a StickyNotes https://notes.../n/<id>`). Each file gets a note; a
+    /// file that already has a live note just brings its window forward.
+    /// - Returns: `true` if at least one input produced a note.
     @discardableResult
     func openFiles(_ urls: [URL]) -> Bool {
         var opened = false
-        for url in urls where NoteManager.isMarkdownFile(url) {
-            if openFile(url) != nil { opened = true }
+        for url in urls {
+            if NoteManager.isMarkdownFile(url) {
+                if openFile(url) != nil { opened = true }
+            } else if let link = RemoteNoteLink.parse(url) {
+                openRemoteLink(link)
+                opened = true
+            }
         }
         return opened
     }
@@ -110,6 +125,147 @@ class AppCoordinator: ObservableObject {
         windowManager.openWindow(for: note, coordinator: self)
         windowManager.bringToFront(note.id)
         return note
+    }
+
+    // MARK: - Remote notes (Notes API)
+
+    /// Open a shared note link (`https://notes.example.com/n/<id>`).
+    func openRemoteURL(_ url: URL) {
+        guard let link = RemoteNoteLink.parse(url) else {
+            presentRemoteError(RemoteNotesClient.ClientError.invalidLink)
+            return
+        }
+        openRemoteLink(link)
+    }
+
+    /// Ask for a note URL and open it.
+    func promptOpenRemoteURL() {
+        let alert = NSAlert()
+        alert.messageText = "Open Note URL"
+        alert.informativeText = "Paste a shared note link from your Notes server."
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 360, height: 24))
+        field.placeholderString = "https://notes.example.com/n/…"
+        if let clip = NSPasteboard.general.string(forType: .string) {
+            let trimmed = clip.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let url = URL(string: trimmed), RemoteNoteLink.parse(url) != nil {
+                field.stringValue = trimmed
+            }
+        }
+        alert.accessoryView = field
+        alert.addButton(withTitle: "Open")
+        alert.addButton(withTitle: "Cancel")
+        alert.window.initialFirstResponder = field
+
+        NSApp.activate(ignoringOtherApps: true)
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        let raw = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: raw), RemoteNoteLink.parse(url) != nil else {
+            presentRemoteError(RemoteNotesClient.ClientError.invalidLink)
+            return
+        }
+        openRemoteURL(url)
+    }
+
+    private func openRemoteLink(_ link: RemoteNoteLink) {
+        if let existing = noteManager.notes.first(where: {
+            $0.isRemote
+                && $0.remoteShareID == link.shareID
+                && $0.remoteBaseURL == link.baseURL.absoluteString
+        }) {
+            windowManager.openWindow(for: existing, coordinator: self)
+            windowManager.bringToFront(existing.id)
+            refreshRemoteNote(existing)
+            return
+        }
+
+        RemoteNotesClient.shared.fetchSharedNote(link) { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .failure(let error):
+                self.presentRemoteError(error)
+            case .success(let remote):
+                let note = self.noteManager.addRemoteNote(
+                    link: link,
+                    remoteNoteID: remote.id,
+                    title: remote.title,
+                    content: remote.body,
+                    revision: remote.revision,
+                    position: self.calculateNewNotePosition()
+                )
+                self.windowManager.openWindow(for: note, coordinator: self)
+                self.windowManager.bringToFront(note.id)
+            }
+        }
+    }
+
+    private func startRemotePolling() {
+        remotePollTimer?.invalidate()
+        remotePollTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
+            self?.pollRemoteNotes()
+        }
+    }
+
+    /// Fetch every open remote note and apply newer revisions.
+    private func pollRemoteNotes() {
+        guard !isPollingRemote else { return }
+        let notes = noteManager.remoteNotes
+        guard !notes.isEmpty else { return }
+
+        isPollingRemote = true
+        let group = DispatchGroup()
+        for note in notes {
+            guard let base = note.remoteBaseURL.flatMap({ URL(string: $0) }),
+                  let shareID = note.remoteShareID else { continue }
+            group.enter()
+            RemoteNotesClient.shared.fetchSharedNote(
+                RemoteNoteLink(baseURL: base, shareID: shareID)
+            ) { [weak self] result in
+                defer { group.leave() }
+                guard let self, case .success(let remote) = result else { return }
+                guard remote.revision != note.remoteRevision else { return }
+                self.noteManager.updateRemoteNote(
+                    note.id,
+                    title: remote.title,
+                    content: remote.body,
+                    revision: remote.revision
+                )
+                self.windowManager.getWindowController(for: note.id)?
+                    .applyRemoteUpdate(content: remote.body)
+            }
+        }
+        group.notify(queue: .main) { [weak self] in
+            self?.isPollingRemote = false
+        }
+    }
+
+    private func refreshRemoteNote(_ note: Note) {
+        guard let base = note.remoteBaseURL.flatMap({ URL(string: $0) }),
+              let shareID = note.remoteShareID else { return }
+        RemoteNotesClient.shared.fetchSharedNote(
+            RemoteNoteLink(baseURL: base, shareID: shareID)
+        ) { [weak self] result in
+            guard let self, case .success(let remote) = result else { return }
+            guard remote.revision != note.remoteRevision else { return }
+            self.noteManager.updateRemoteNote(
+                note.id,
+                title: remote.title,
+                content: remote.body,
+                revision: remote.revision
+            )
+            self.windowManager.getWindowController(for: note.id)?
+                .applyRemoteUpdate(content: remote.body)
+        }
+    }
+
+    private func presentRemoteError(_ error: Error) {
+        let alert = NSAlert()
+        alert.messageText = "Could not open the note"
+        alert.informativeText = error.localizedDescription
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "OK")
+        NSApp.activate(ignoringOtherApps: true)
+        alert.runModal()
     }
 
     /// Handle note content changes from the editor

@@ -333,6 +333,22 @@ class NoteWindowController: NSWindowController, NSWindowDelegate {
         wv.evaluateJavaScript("window.focusEditor()")
     }
 
+    /// Apply a newer body fetched from the Notes API.
+    func applyRemoteUpdate(content: String) {
+        note.content = content
+        guard hasWebView else {
+            showTextPreview()
+            return
+        }
+        SharedWebViewManager.shared.webView.callAsyncJavaScript(
+            "window.setContent(content)",
+            arguments: ["content": content],
+            in: nil,
+            in: .page,
+            completionHandler: nil
+        )
+    }
+
     /// Show a snapshot of the last rendered editor state (preserves markdown rendering)
     func showSnapshot(_ image: NSImage) {
         removeNonWebViewSubviews()

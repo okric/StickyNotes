@@ -42,33 +42,25 @@ Open items:
 
 ## Remote notes (Notes API)
 
-`NoteSourceKind.remoteURL` exists in the model and decodes, but nothing creates
-or reads it. The Notes service (`https://notes.example.com`, LAN
-`http://192.168.1.44:8094`) gained what a sticky needs on 2026-11-08:
+Read-only remote notes shipped: File > Open Note URL… (Cmd+Shift+O) or
+`open -a StickyNotes https://notes.example.com/n/<id>`. The app fetches
+`GET /api/shared/<shareId>` (open, no token), caches the body in
+`Application Support/com.mdstickynotes/remote/`, polls every 5 seconds, and
+disables editing.
 
-- a `notes` scope (read + create + edit, no delete/order/share);
-- `revision` on every note, `ETag` on `GET /api/notes/:id` (`If-None-Match` →
-  304) and conditional `PATCH` with `If-Match` (409 returns the current note);
-- a per-note share URL (`/n/<shareId>`) plus open `GET /api/shared/<shareId>`,
-  which returns `id` + `revision` — enough to bootstrap a client from a pasted
-  link.
+Write path still to do:
 
-So "open one note, edit it, save it back" is possible now. Remaining gaps are
-quality-of-life, not blockers:
+- `notes`-scope bearer token, stored in the Keychain (Settings UI; currently no
+  token is stored and the editor is read-only)
+- debounced `PATCH /api/notes/:id` with `If-Match: "<revision>"`, 200 → store
+  the new revision, 409 → offer "keep mine / reload theirs"
+- `POST /api/notes` to create a note from a sticky
+- token stays per-server in the Keychain, never in `index.json`
 
-- `GET /api/notes` still returns `body` and `html` for every note and has no
-  `since`/`fields`, so discovery and deletion polling is not cheap;
-- no batch write for an offline queue (one `PATCH` per note);
-- tokens are still minted by hand on the server (no device pairing), and a
-  `notes` token cannot share/unshare — the user shares in the web UI;
-- a URL only exists for **shared** notes (public read-only link). An
-  authenticated open-by-id link does not exist, by design.
-
-Client-side work still to do in StickyNotes: `NoteSourceKind.remote` with
-`remoteID`/base URL/`revision`, bearer token in the Keychain, "Open URL…"
-parsing `/n/<shareId>` (or `/api/shared/<shareId>`), debounced `PATCH` with
-`If-Match`, 409 conflict UI, per-note `If-None-Match` polling, and a local cache
-so a note opens offline.
+API gaps that remain (nice-to-have): `GET /api/notes` returns every `body` and
+`html` (no `since`/`fields`), no batch endpoint for an offline queue, and no
+device pairing flow. A URL only exists for **shared** notes (public read-only
+link); an authenticated open-by-id link does not exist by design.
 
 The full proposal lives next to the Notes service:
 `~/Projects/Notes/.work/PLAN-sticky-client.md`.

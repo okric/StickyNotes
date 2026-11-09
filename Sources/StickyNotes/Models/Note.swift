@@ -5,8 +5,7 @@ import CoreGraphics
 enum NoteSourceKind: String, Codable, Equatable {
     /// Absolute POSIX path to a local Markdown file.
     case file
-    /// Reserved for remote notes. Not implemented yet; decoding keeps it so the
-    /// schema can grow without breaking existing indexes.
+    /// Note served by a Notes API instance (`/n/<shareId>`), cached locally.
     case remoteURL
 }
 
@@ -42,6 +41,18 @@ struct Note: Identifiable, Equatable {
     /// Window origin relative to that display's origin
     var screenOffset: CGPoint?
 
+    /// Notes API origin (scheme + host[:port]); remote notes only
+    var remoteBaseURL: String?
+
+    /// Notes API note id (the one `PATCH /api/notes/:id` uses)
+    var remoteNoteID: String?
+
+    /// Public share id from the `/n/<shareId>` link, if the note has one
+    var remoteShareID: String?
+
+    /// Content revision of the last successful fetch/save
+    var remoteRevision: String?
+
     /// Window size on screen
     var size: CGSize
 
@@ -74,6 +85,9 @@ struct Note: Identifiable, Equatable {
         sourceKind == .file ? URL(fileURLWithPath: path) : nil
     }
 
+    /// True for notes served by the Notes API
+    var isRemote: Bool { sourceKind == .remoteURL }
+
     init(
         id: UUID = UUID(),
         sourceKind: NoteSourceKind = .file,
@@ -84,6 +98,10 @@ struct Note: Identifiable, Equatable {
         position: CGPoint = CGPoint(x: 100, y: 100),
         screenUUID: String? = nil,
         screenOffset: CGPoint? = nil,
+        remoteBaseURL: String? = nil,
+        remoteNoteID: String? = nil,
+        remoteShareID: String? = nil,
+        remoteRevision: String? = nil,
         size: CGSize = CGSize(width: 300, height: 360),
         isMinimized: Bool = false,
         opacity: Double = 0.95,
@@ -103,6 +121,10 @@ struct Note: Identifiable, Equatable {
         self.position = position
         self.screenUUID = screenUUID
         self.screenOffset = screenOffset
+        self.remoteBaseURL = remoteBaseURL
+        self.remoteNoteID = remoteNoteID
+        self.remoteShareID = remoteShareID
+        self.remoteRevision = remoteRevision
         self.size = size
         self.isMinimized = isMinimized
         self.opacity = opacity
@@ -127,6 +149,7 @@ extension Note: Codable {
         case id, sourceKind, path, title, position, size, isMinimized, opacity
         case colorTheme, cursorPosition, scrollTop, alwaysOnTop, createdAt, modifiedAt
         case screenUUID, screenOffset
+        case remoteBaseURL, remoteNoteID, remoteShareID, remoteRevision
     }
 
     init(from decoder: Decoder) throws {
@@ -143,6 +166,11 @@ extension Note: Codable {
         // Decode CGPoint
         let positionDict = try container.decodeIfPresent([String: Double].self, forKey: .position) ?? [:]
         position = CGPoint(x: positionDict["x"] ?? 100, y: positionDict["y"] ?? 100)
+
+        remoteBaseURL = try container.decodeIfPresent(String.self, forKey: .remoteBaseURL)
+        remoteNoteID = try container.decodeIfPresent(String.self, forKey: .remoteNoteID)
+        remoteShareID = try container.decodeIfPresent(String.self, forKey: .remoteShareID)
+        remoteRevision = try container.decodeIfPresent(String.self, forKey: .remoteRevision)
 
         screenUUID = try container.decodeIfPresent(String.self, forKey: .screenUUID)
         if let offsetDict = try container.decodeIfPresent([String: Double].self, forKey: .screenOffset) {
@@ -175,6 +203,11 @@ extension Note: Codable {
         // Encode CGPoint as dictionary
         let positionDict = ["x": position.x, "y": position.y]
         try container.encode(positionDict, forKey: .position)
+
+        try container.encodeIfPresent(remoteBaseURL, forKey: .remoteBaseURL)
+        try container.encodeIfPresent(remoteNoteID, forKey: .remoteNoteID)
+        try container.encodeIfPresent(remoteShareID, forKey: .remoteShareID)
+        try container.encodeIfPresent(remoteRevision, forKey: .remoteRevision)
 
         try container.encodeIfPresent(screenUUID, forKey: .screenUUID)
         if let screenOffset {

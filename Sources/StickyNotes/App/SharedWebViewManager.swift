@@ -109,6 +109,7 @@ class SharedWebViewManager {
             if let noteId = self.activeNoteId,
                let note = self.coordinator?.noteManager.getNote(noteId) {
                 self.loadNoteContent(noteId, note: note)
+                self.setReadOnly(note.isRemote)
             }
 
             // Reveal WebView in the active window
@@ -199,6 +200,17 @@ class SharedWebViewManager {
         }
     }
 
+    /// Toggle editing in the editor (remote notes are read-only for now).
+    func setReadOnly(_ readOnly: Bool) {
+        webView.callAsyncJavaScript(
+            "window.setReadOnly(readOnly)",
+            arguments: ["readOnly": readOnly],
+            in: nil,
+            in: .page,
+            completionHandler: nil
+        )
+    }
+
     /// Switch the editor to a different note.
     /// Serializes current note state, then loads the target note.
     func switchToNote(_ noteId: UUID, note: Note) {
@@ -224,6 +236,7 @@ class SharedWebViewManager {
         // 2. Set the new note ID and load content
         activeNoteId = noteId
         loadNoteContent(noteId, note: note)
+        setReadOnly(note.isRemote)
     }
 
     /// Load note content into the editor (shared by switchToNote and markReady)
@@ -308,6 +321,7 @@ class SharedWebViewManager {
         }
         activeNoteId = noteId
         loadNoteContent(noteId, note: note)
+        setReadOnly(note.isRemote)
     }
 
     /// Flush current note's content/cursor/scroll to NoteManager (for app termination)
