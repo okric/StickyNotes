@@ -60,10 +60,12 @@ extension Notification.Name {
     static let remoteTokenChanged = Notification.Name("com.mdstickynotes.remoteTokenChanged")
 }
 
-/// Whether a remote note can be edited: it needs a token for its server.
+/// Editing policy: local notes are always editable; a remote note needs a token
+/// for its server.
 enum RemoteWriteAccess {
-    static func canEdit(_ note: Note) -> Bool {
-        guard note.isRemote, let base = note.remoteBaseURL else { return false }
-        return RemoteCredentials.token(for: base) != nil
+    static func isReadOnly(_ note: Note) -> Bool {
+        guard note.isRemote else { return false }
+        guard let base = note.remoteBaseURL else { return true }
+        return RemoteCredentials.token(for: base) == nil
     }
 }

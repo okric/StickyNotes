@@ -337,7 +337,7 @@ class NoteWindowController: NSWindowController, NSWindowDelegate {
     func refreshEditingPolicy() {
         guard let current = coordinator?.noteManager.getNote(note.id) else { return }
         note = current
-        SharedWebViewManager.shared.setReadOnly(!RemoteWriteAccess.canEdit(current))
+        SharedWebViewManager.shared.setReadOnly(RemoteWriteAccess.isReadOnly(current))
     }
 
     /// Apply a newer body fetched from the Notes API.
