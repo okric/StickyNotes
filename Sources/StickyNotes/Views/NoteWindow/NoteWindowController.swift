@@ -333,6 +333,13 @@ class NoteWindowController: NSWindowController, NSWindowDelegate {
         wv.evaluateJavaScript("window.focusEditor()")
     }
 
+    /// Re-evaluate whether this note is editable (called when a token changes).
+    func refreshEditingPolicy() {
+        guard let current = coordinator?.noteManager.getNote(note.id) else { return }
+        note = current
+        SharedWebViewManager.shared.setReadOnly(!RemoteWriteAccess.canEdit(current))
+    }
+
     /// Apply a newer body fetched from the Notes API.
     func applyRemoteUpdate(content: String) {
         note.content = content

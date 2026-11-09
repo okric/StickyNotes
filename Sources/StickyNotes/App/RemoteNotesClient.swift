@@ -63,11 +63,17 @@ final class RemoteNotesClient {
         case badStatus(Int)
         case invalidResponse
         case invalidLink
+        case conflict(RemoteNote)
+        case unauthorized
 
         var errorDescription: String? {
             switch self {
             case .invalidLink:
                 return "Expected a note link like https://notes.example.com/n/<id>."
+            case .unauthorized:
+                return "The notes server rejected the token (401). Check it in Settings."
+            case .conflict:
+                return "The note changed on the server since it was loaded."
             case .badStatus(404):
                 return "That note is not shared anymore (or the link is wrong)."
             case .badStatus(let code):
@@ -76,6 +82,63 @@ final class RemoteNotesClient {
                 return "The notes server returned an unexpected response."
             }
         }
+    }
+
+    /// Conditional write: `If-Match` makes the server answer 409 when the file
+    /// changed since `revision` was read.
+    func patchNote(
+        baseURL: URL,
+        noteID: String,
+        body: String,
+        revision: String,
+        token: String,
+        completion: @escaping (Result<RemoteNote, Error>) -> Void
+    ) {
+        let url = baseURL
+            .appendingPathComponent("api")
+            .appendingPathComponent("notes")
+            .appendingPathComponent(noteID)
+
+        var request = URLRequest(url: url, timeoutInterval: 10)
+        request.httpMethod = "PATCH"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("\"\(revision)\"", forHTTPHeaderField: "If-Match")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: ["body": body])
+
+        session.dataTask(with: request) { data, response, error in
+            let result: Result<RemoteNote, Error>
+            if let error {
+                result = .failure(error)
+            } else if let http = response as? HTTPURLResponse {
+                switch http.statusCode {
+                case 200..<300:
+                    if let data, let note = try? JSONDecoder().decode(RemoteNote.self, from: data) {
+                        result = .success(note)
+                    } else {
+                        result = .failure(ClientError.invalidResponse)
+                    }
+                case 401, 403:
+                    result = .failure(ClientError.unauthorized)
+                case 409:
+                    if let data,
+                       let conflict = try? JSONDecoder().decode(ConflictResponse.self, from: data) {
+                        result = .failure(ClientError.conflict(conflict.note))
+                    } else {
+                        result = .failure(ClientError.badStatus(409))
+                    }
+                default:
+                    result = .failure(ClientError.badStatus(http.statusCode))
+                }
+            } else {
+                result = .failure(ClientError.invalidResponse)
+            }
+            DispatchQueue.main.async { completion(result) }
+        }.resume()
+    }
+
+    private struct ConflictResponse: Decodable {
+        let note: RemoteNote
     }
 
     func fetchSharedNote(

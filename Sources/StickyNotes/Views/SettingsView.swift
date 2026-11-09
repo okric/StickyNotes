@@ -6,6 +6,11 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var settings: AppSettings
 
+    @State private var serverURL = "https://notes.example.com"
+    @State private var token = ""
+    @State private var tokenStatus = ""
+    @State private var tokenStatusIsError = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Notes Folder")
@@ -35,6 +40,34 @@ struct SettingsView: View {
 
             Divider()
 
+            Text("Notes Server")
+                .font(.headline)
+
+            HStack(spacing: 8) {
+                TextField("https://notes.example.com", text: $serverURL)
+                    .textFieldStyle(.roundedBorder)
+                Button("Save") { saveToken() }
+            }
+
+            SecureField("API token (nk_…)", text: $token)
+                .textFieldStyle(.roundedBorder)
+
+            Text(tokenStatus)
+                .font(.callout)
+                .foregroundColor(tokenStatusIsError ? .red : .secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            Text("""
+            Remote notes are read-only until a token with the `notes` scope is             saved here. Tokens are stored in the macOS Keychain, never in the app's             settings files. Create one on the server with:
+
+            docker compose exec notes-api node scripts/add-token.ts "mac sticky" --scope notes
+            """)
+            .font(.callout)
+            .foregroundColor(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+
+            Divider()
+
             Text("""
             Each sticky note is a Markdown file in this folder. Changes are saved \
             directly to the file, so notes can live in an Obsidian vault or any \
@@ -49,6 +82,29 @@ struct SettingsView: View {
         }
         .padding(20)
         .frame(width: 540)
+        .onAppear { refreshTokenStatus() }
+    }
+
+    private func saveToken() {
+        let base = RemoteCredentials.normalize(serverURL)
+        guard let url = URL(string: base), url.scheme != nil, url.host != nil else {
+            tokenStatus = "Enter a server URL like https://notes.example.com"
+            tokenStatusIsError = true
+            return
+        }
+        serverURL = base
+        RemoteCredentials.setToken(token, for: base)
+        token = ""
+        refreshTokenStatus()
+        NotificationCenter.default.post(name: .remoteTokenChanged, object: nil)
+    }
+
+    private func refreshTokenStatus() {
+        let base = RemoteCredentials.normalize(serverURL)
+        tokenStatusIsError = false
+        tokenStatus = RemoteCredentials.token(for: base) == nil
+            ? "No token stored for \(base)"
+            : "Token stored for \(base)"
     }
 
     private func chooseFolder() {

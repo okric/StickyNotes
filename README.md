@@ -28,7 +28,7 @@ A native macOS sticky note app with Obsidian-style markdown live preview, built 
 - **Adjustable Opacity**: Transparency slider for each note
 - **Auto-Save**: Edits are written straight back to the file
 - **Open With**: open any `.md` file from Finder (or `open -a StickyNotes note.md`); it is edited in place, wherever it lives
-- **Remote Notes (read-only)**: File > Open Note URL… (Cmd+Shift+O) opens a shared Notes link (`…/n/<id>`) as a sticky and polls for updates
+- **Remote Notes**: File > Open Note URL… (Cmd+Shift+O) opens a shared Notes link (`…/n/<id>`) as a sticky; add a `notes`-scope token in Settings to edit it (read-only without one)
 - **Notes Folder Settings**: pick any folder, or create `~/Documents/Sticky Notes` (Cmd+,)
 
 ### Keyboard Shortcuts

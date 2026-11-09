@@ -27,6 +27,10 @@ class AppCoordinator: ObservableObject {
     private var remotePollTimer: Timer?
     private var isPollingRemote = false
 
+    /// Pending debounced PATCHes for remote notes.
+    private var remoteSaveTimers: [UUID: Timer] = [:]
+    private let remoteSaveDelay: TimeInterval = 0.8
+
     // MARK: - Initialization
 
     init() {
@@ -43,10 +47,19 @@ class AppCoordinator: ObservableObject {
         setupBindings()
         openInitialWindows()
         startRemotePolling()
+
+        NotificationCenter.default.addObserver(
+            forName: .remoteTokenChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.refreshRemoteEditingPolicy()
+        }
     }
 
     deinit {
         remotePollTimer?.invalidate()
+        remoteSaveTimers.values.forEach { $0.invalidate() }
     }
 
     // MARK: - Public Methods
@@ -65,6 +78,8 @@ class AppCoordinator: ObservableObject {
     /// If the app is quitting, skip — saveAllNotesImmediately() handles bulk save.
     /// Otherwise, remove the note from the index. Its Markdown file stays on disk.
     func closeNoteWindow(_ noteId: UUID) {
+        remoteSaveTimers[noteId]?.invalidate()
+        remoteSaveTimers[noteId] = nil
         windowManager.removeWindow(for: noteId)
         SharedWebViewManager.shared.removeCachedState(for: noteId)
 
@@ -224,6 +239,8 @@ class AppCoordinator: ObservableObject {
                 defer { group.leave() }
                 guard let self, case .success(let remote) = result else { return }
                 guard remote.revision != note.remoteRevision else { return }
+                // Don't stomp unsaved keystrokes.
+                guard self.remoteSaveTimers[note.id] == nil else { return }
                 self.noteManager.updateRemoteNote(
                     note.id,
                     title: remote.title,
@@ -258,6 +275,93 @@ class AppCoordinator: ObservableObject {
         }
     }
 
+    private func scheduleRemoteSave(_ noteId: UUID) {
+        guard noteManager.getNote(noteId)?.isRemote == true else { return }
+        remoteSaveTimers[noteId]?.invalidate()
+        remoteSaveTimers[noteId] = Timer.scheduledTimer(
+            withTimeInterval: remoteSaveDelay,
+            repeats: false
+        ) { [weak self] _ in
+            self?.remoteSaveTimers[noteId] = nil
+            self?.saveRemoteNote(noteId)
+        }
+    }
+
+    private func saveRemoteNote(_ noteId: UUID) {
+        guard let note = noteManager.getNote(noteId), note.isRemote,
+              let baseString = note.remoteBaseURL,
+              let base = URL(string: baseString),
+              let noteID = note.remoteNoteID,
+              let revision = note.remoteRevision,
+              let token = RemoteCredentials.token(for: baseString) else {
+            return
+        }
+
+        RemoteNotesClient.shared.patchNote(
+            baseURL: base,
+            noteID: noteID,
+            body: note.content,
+            revision: revision,
+            token: token
+        ) { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .success(let remote):
+                self.noteManager.updateRemoteNote(
+                    noteId,
+                    title: remote.title,
+                    content: remote.body,
+                    revision: remote.revision
+                )
+            case .failure(RemoteNotesClient.ClientError.conflict(let remote)):
+                self.resolveRemoteConflict(noteId: noteId, remote: remote)
+            case .failure(let error):
+                // Keep the local text and cache; the next successful save (or a
+                // poll) reconciles it.
+                print("[AppCoordinator] Remote save failed: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    private func resolveRemoteConflict(noteId: UUID, remote: RemoteNote) {
+        let alert = NSAlert()
+        alert.messageText = "This note changed on the server"
+        alert.informativeText = "Another client saved a newer version. Reload their version or overwrite it with yours?"
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Reload Theirs")
+        alert.addButton(withTitle: "Keep Mine")
+        NSApp.activate(ignoringOtherApps: true)
+
+        if alert.runModal() == .alertSecondButtonReturn {
+            // Overwrite: adopt the new revision, then save our text again.
+            let local = noteManager.getNote(noteId)?.content ?? ""
+            noteManager.updateRemoteNote(
+                noteId,
+                title: nil,
+                content: local,
+                revision: remote.revision
+            )
+            saveRemoteNote(noteId)
+        } else {
+            noteManager.updateRemoteNote(
+                noteId,
+                title: remote.title,
+                content: remote.body,
+                revision: remote.revision
+            )
+            windowManager.getWindowController(for: noteId)?
+                .applyRemoteUpdate(content: remote.body)
+        }
+    }
+
+    /// A token was added/removed: let open remote notes switch between
+    /// read-only and editable without reopening them.
+    private func refreshRemoteEditingPolicy() {
+        for note in noteManager.remoteNotes {
+            windowManager.getWindowController(for: note.id)?.refreshEditingPolicy()
+        }
+    }
+
     private func presentRemoteError(_ error: Error) {
         let alert = NSAlert()
         alert.messageText = "Could not open the note"
@@ -271,6 +375,10 @@ class AppCoordinator: ObservableObject {
     /// Handle note content changes from the editor
     func handleContentChange(noteId: UUID, content: String) {
         noteManager.updateNoteContent(noteId, content: content)
+
+        if noteManager.getNote(noteId)?.isRemote == true {
+            scheduleRemoteSave(noteId)
+        }
     }
 
     /// Handle window state changes

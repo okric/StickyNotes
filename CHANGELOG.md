@@ -15,16 +15,18 @@ All notable changes to MD Sticky Notes will be documented in this file.
   from Finder / Launchpad left by Debug, DerivedData and DMG copies
 - Version bumped to 1.3.0 (build 10300)
 
-### Remote notes, read-only (fork)
+### Remote notes (fork)
 
 - File > Open Note URL… (Cmd+Shift+O) or `open -a StickyNotes https://…/n/<id>`
-  opens a note shared by a Notes server as a read-only sticky
+  opens a note shared by a Notes server as a sticky
 - Body, title and `revision` come from the open `GET /api/shared/<shareId>`
   endpoint; no token needed
 - The body is cached in `~/Library/Application Support/com.mdstickynotes/remote/`
   so the note opens offline, and refetched every 5 seconds
-- Editing is disabled in the editor for remote notes (write path needs a
-  `notes` token and is not wired yet)
+- Read-only until a `notes`-scope token is saved in Settings (Cmd+,); the token
+  lives in the macOS Keychain, never in the settings files
+- Edits are debounced and sent as `PATCH /api/notes/:id` with `If-Match`;
+  a `409` offers "Reload Theirs" or "Keep Mine" instead of overwriting
 
 ### Multi-display windows (fork)
 

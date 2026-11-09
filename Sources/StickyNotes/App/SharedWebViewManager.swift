@@ -109,7 +109,7 @@ class SharedWebViewManager {
             if let noteId = self.activeNoteId,
                let note = self.coordinator?.noteManager.getNote(noteId) {
                 self.loadNoteContent(noteId, note: note)
-                self.setReadOnly(note.isRemote)
+                self.setReadOnly(!RemoteWriteAccess.canEdit(note))
             }
 
             // Reveal WebView in the active window
@@ -236,7 +236,7 @@ class SharedWebViewManager {
         // 2. Set the new note ID and load content
         activeNoteId = noteId
         loadNoteContent(noteId, note: note)
-        setReadOnly(note.isRemote)
+        setReadOnly(!RemoteWriteAccess.canEdit(note))
     }
 
     /// Load note content into the editor (shared by switchToNote and markReady)
@@ -321,7 +321,7 @@ class SharedWebViewManager {
         }
         activeNoteId = noteId
         loadNoteContent(noteId, note: note)
-        setReadOnly(note.isRemote)
+        setReadOnly(!RemoteWriteAccess.canEdit(note))
     }
 
     /// Flush current note's content/cursor/scroll to NoteManager (for app termination)
