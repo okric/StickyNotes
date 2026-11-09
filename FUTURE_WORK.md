@@ -5,7 +5,7 @@ likely they are to bite a user next, not by effort.
 
 ## Notes that live outside the app's folder
 
-Shipped: Finder "Open With", `open -a StickyNotes note.md`, drag onto the Dock
+Shipped: Finder "Open With", `open -a "Sticky Notes" note.md`, drag onto the Dock
 icon, and `application(_:open:)` while the app runs. Files are edited in place;
 nothing is copied into the notes folder.
 
@@ -43,7 +43,7 @@ Open items:
 ## Remote notes (Notes API)
 
 Shipped: File > Open Note URL… (Cmd+Shift+O) or
-`open -a StickyNotes https://notes.example.com/n/<id>`. The app fetches
+`open -a "Sticky Notes" https://notes.example.com/n/<id>`. The app fetches
 `GET /api/shared/<shareId>` (open, no token), caches the body in
 `Application Support/com.mdstickynotes/remote/`, polls every 5 seconds, and
 edits through `PATCH /api/notes/:id` with `If-Match` when a `notes`-scope token

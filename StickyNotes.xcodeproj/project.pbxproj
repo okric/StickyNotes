@@ -18,6 +18,7 @@
 		637484C42C4A7064C4266113 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = D319DC00F39B7144CBE620E9 /* AppIcon.icns */; };
 		64BD8802AE918E4D1AF55459 /* LegacyImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84F4326241D64F5ECD08A675 /* LegacyImporter.swift */; };
 		6CDC78B2AD65AD1D51927FCE /* AppCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2C9AF8C1F7411AD0875E92 /* AppCoordinator.swift */; };
+		7107D8F03CBE281A805685BB /* TrashUndoToast.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C25EC9895BBC9F300C52D66 /* TrashUndoToast.swift */; };
 		7F2FC897E8F96EF6EA472069 /* MarkdownPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F952AC76D06B912B2930492 /* MarkdownPreview.swift */; };
 		7FD53CDB722D5F3B4AC52D22 /* NoteManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B886F33B3197717C78165B58 /* NoteManager.swift */; };
 		8E93750A5B1CFAD30D61EA3D /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDE69F17D9D7F72F804363A8 /* AppSettings.swift */; };
@@ -39,6 +40,7 @@
 		66C34EB50FDEBA034CD18AE9 /* RemoteCredentials.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteCredentials.swift; sourceTree = "<group>"; };
 		6D2C9AF8C1F7411AD0875E92 /* AppCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCoordinator.swift; sourceTree = "<group>"; };
 		757760E4AD39F9942A43FB66 /* RemoteNotesClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteNotesClient.swift; sourceTree = "<group>"; };
+		7C25EC9895BBC9F300C52D66 /* TrashUndoToast.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrashUndoToast.swift; sourceTree = "<group>"; };
 		84F4326241D64F5ECD08A675 /* LegacyImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyImporter.swift; sourceTree = "<group>"; };
 		B4AA9E7CEE822A3A8CC1DD67 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		B886F33B3197717C78165B58 /* NoteManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteManager.swift; sourceTree = "<group>"; };
@@ -130,6 +132,7 @@
 			isa = PBXGroup;
 			children = (
 				B4AA9E7CEE822A3A8CC1DD67 /* SettingsView.swift */,
+				7C25EC9895BBC9F300C52D66 /* TrashUndoToast.swift */,
 				F4F6C8786B24AA7FCDBAABDF /* NoteWindow */,
 			);
 			path = Views;
@@ -264,6 +267,7 @@
 				DEC956DE15BF38F713B4F165 /* SharedEditorBridge.swift in Sources */,
 				F8109ABFEB96C999A328C0EA /* SharedWebViewManager.swift in Sources */,
 				501054FD3179F74231299EDE /* StickyNotesApp.swift in Sources */,
+				7107D8F03CBE281A805685BB /* TrashUndoToast.swift in Sources */,
 				4B93F54DA2B1FF7BD656FCCD /* WindowManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -282,7 +286,7 @@
 					"@executable_path/../Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.mdstickynotes;
-				PRODUCT_NAME = StickyNotes;
+				PRODUCT_NAME = "Sticky Notes";
 				SDKROOT = macosx;
 			};
 			name = Release;
@@ -323,7 +327,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 10300;
+				CURRENT_PROJECT_VERSION = 10302;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
@@ -341,7 +345,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				MARKETING_VERSION = 1.3.0;
+				MARKETING_VERSION = 1.3.2;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -363,7 +367,7 @@
 					"@executable_path/../Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.mdstickynotes;
-				PRODUCT_NAME = StickyNotes;
+				PRODUCT_NAME = "Sticky Notes";
 				SDKROOT = macosx;
 			};
 			name = Debug;
@@ -404,7 +408,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 10300;
+				CURRENT_PROJECT_VERSION = 10302;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
@@ -428,7 +432,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				MARKETING_VERSION = 1.3.0;
+				MARKETING_VERSION = 1.3.2;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

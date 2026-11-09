@@ -31,6 +31,9 @@ class AppCoordinator: ObservableObject {
     private var remoteSaveTimers: [UUID: Timer] = [:]
     private let remoteSaveDelay: TimeInterval = 0.8
 
+    /// Toast offering to undo the last move to the Trash.
+    private var trashToast: TrashUndoToast?
+
     // MARK: - Initialization
 
     init() {
@@ -77,7 +80,7 @@ class AppCoordinator: ObservableObject {
 
     /// Called when a note window is closing (from windowWillClose delegate).
     /// If the app is quitting, skip — saveAllNotesImmediately() handles bulk save.
-    /// Otherwise, remove the note from the index. Its Markdown file stays on disk.
+    /// Otherwise, remove the note from the index and move its file to the Trash.
     func closeNoteWindow(_ noteId: UUID) {
         remoteSaveTimers[noteId]?.invalidate()
         remoteSaveTimers[noteId] = nil
@@ -87,8 +90,45 @@ class AppCoordinator: ObservableObject {
         if isQuitting {
             return
         }
-        // User explicitly closed — drop it from the index, keep the file
-        noteManager.deleteNote(noteId)
+        if let trashed = noteManager.deleteNote(noteId, trashingFile: true) {
+            showTrashUndoToast(for: trashed)
+        }
+    }
+
+    /// Offer to undo a close that moved the note's file to the Trash.
+    private func showTrashUndoToast(for trashed: NoteManager.TrashedNote) {
+        trashToast?.dismiss()
+        trashToast = nil
+
+        var toast: TrashUndoToast?
+        toast = TrashUndoToast(
+            title: trashed.note.title,
+            onUndo: { [weak self] in self?.undoTrash(trashed) },
+            onDismiss: { [weak self, weak toast] in
+                guard let self, let toast, self.trashToast === toast else { return }
+                self.trashToast = nil
+            }
+        )
+        trashToast = toast
+        toast?.present()
+    }
+
+    /// Put a trashed note back where it was and reopen its window.
+    private func undoTrash(_ trashed: NoteManager.TrashedNote) {
+        do {
+            try noteManager.restoreTrashedNote(trashed)
+        } catch {
+            let alert = NSAlert()
+            alert.messageText = "Could not restore the note"
+            alert.informativeText = "“\(trashed.fileURL.lastPathComponent)” is still in the Trash. \(error.localizedDescription)"
+            alert.alertStyle = .warning
+            NSApp.activate(ignoringOtherApps: true)
+            alert.runModal()
+            return
+        }
+
+        windowManager.openWindow(for: trashed.note, coordinator: self)
+        windowManager.bringToFront(trashed.note.id)
     }
 
     /// Show the standard Open panel and open the chosen Markdown files.

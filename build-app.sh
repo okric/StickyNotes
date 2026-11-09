@@ -15,11 +15,12 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
 
-APP_NAME="StickyNotes"
+APP_NAME="Sticky Notes"
+PROJECT_NAME="StickyNotes"
 BUILD_DIR="$ROOT/build"
 DERIVED="$BUILD_DIR/DerivedData"
 APP_DIR="$BUILD_DIR/$APP_NAME.app"
-XCODEPROJ="$ROOT/$APP_NAME.xcodeproj"
+XCODEPROJ="$ROOT/$PROJECT_NAME.xcodeproj"
 
 # Regenerate the project when the spec or the file list changed.
 needs_regen() {
@@ -38,7 +39,7 @@ fi
 
 XCODE_ARGS=(
     -project "$XCODEPROJ"
-    -scheme "$APP_NAME"
+    -scheme "$PROJECT_NAME"
     -configuration Release
     -derivedDataPath "$DERIVED"
     build

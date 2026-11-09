@@ -400,8 +400,22 @@ class NoteManager: ObservableObject {
         scheduleSave()
     }
 
-    /// Remove a note from the app. The Markdown file is intentionally kept.
-    func deleteNote(_ noteId: UUID) {
+    /// A note whose file was moved to the Trash, kept so the move can be undone.
+    struct TrashedNote {
+        let note: Note
+        /// Original location the file can be restored to.
+        let fileURL: URL
+        /// Where the file now sits in the Trash.
+        let trashedURL: URL
+    }
+
+    /// Remove a note from the app.
+    ///
+    /// With `trashingFile`, the Markdown file moves to the system Trash and the
+    /// returned value can be passed to `restoreTrashedNote`. Remote notes keep
+    /// only their cached body, which is deleted either way.
+    @discardableResult
+    func deleteNote(_ noteId: UUID, trashingFile: Bool = false) -> TrashedNote? {
         // Flush pending edits so closing a window never loses the last keystrokes.
         if dirtyNoteIds.contains(noteId), let note = getNote(noteId) {
             if note.isRemote {
@@ -412,12 +426,49 @@ class NoteManager: ObservableObject {
             dirtyNoteIds.remove(noteId)
         }
 
-        if let note = getNote(noteId), note.isRemote {
+        guard let note = getNote(noteId) else { return nil }
+
+        if note.isRemote {
             store.removeRemoteContent(for: note)
         }
+
+        var trashed: TrashedNote?
+        if trashingFile, let url = note.fileURL,
+           FileManager.default.fileExists(atPath: url.path) {
+            var resulting: NSURL?
+            do {
+                try FileManager.default.trashItem(at: url, resultingItemURL: &resulting)
+                if let resulting = resulting as URL? {
+                    trashed = TrashedNote(note: note, fileURL: url, trashedURL: resulting)
+                }
+            } catch {
+                print("[NoteManager] Could not move \(url.path) to the Trash: \(error)")
+            }
+        }
+
         notes.removeAll { $0.id == noteId }
         store.saveIndex(notes)
-        print("[NoteManager] Removed note \(noteId) from the index (file kept on disk)")
+        if trashed != nil {
+            print("[NoteManager] Moved note \(noteId) to the Trash")
+        } else {
+            print("[NoteManager] Removed note \(noteId) from the index")
+        }
+        return trashed
+    }
+
+    /// Put a trashed note's file back and re-register the note under its old id.
+    func restoreTrashedNote(_ trashed: TrashedNote) throws {
+        let fileManager = FileManager.default
+        guard !fileManager.fileExists(atPath: trashed.fileURL.path) else {
+            throw CocoaError(.fileWriteFileExists)
+        }
+        try fileManager.moveItem(at: trashed.trashedURL, to: trashed.fileURL)
+
+        if !notes.contains(where: { $0.id == trashed.note.id }) {
+            notes.append(trashed.note)
+            store.saveIndex(notes)
+        }
+        print("[NoteManager] Restored note from the Trash: \(trashed.fileURL.path)")
     }
 
     /// Save a note immediately (for critical operations)

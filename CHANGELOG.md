@@ -2,6 +2,23 @@
 
 All notable changes to MD Sticky Notes will be documented in this file.
 
+## [1.3.2] - 2026-11-08
+
+### The app is named “Sticky Notes”
+
+- The bundle, executable and Finder/Dock name use a space: `Sticky Notes.app`
+- The bundle identifier stays `com.mdstickynotes`, so notes and settings carry over
+- `build-app.sh`, the DMG and the Launch Services cleanup script follow the new
+  name; the DMG is still `MDStickyNotes.dmg`
+
+### Closing a note moves it to the Trash
+
+- Closing a sticky asks once, then moves its `.md` to the system Trash instead
+  of leaving it in the folder
+- A short toast offers Undo (restores the file and reopens the sticky)
+- Remote notes keep their server copy; only the local link and cache are removed
+- Quitting the app never trashes notes; they reopen on the next launch
+
 ## [1.3.1] - 2026-11-08
 
 ### Notes folder is scanned at launch

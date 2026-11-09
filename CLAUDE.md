@@ -4,7 +4,7 @@
 
 ```bash
 ./build-app.sh                # Full build: webpack → Swift → .app bundle
-open build/StickyNotes.app    # Run
+open "build/Sticky Notes.app"    # Run
 ```
 
 Prerequisites: macOS 12+, Swift 5.9+, Node.js 18+. First time: `cd editor-web && npm install`
@@ -13,10 +13,10 @@ Prerequisites: macOS 12+, Swift 5.9+, Node.js 18+. First time: `cd editor-web &&
 
 ```bash
 # Full rebuild (Swift + JS)
-./build-app.sh && open build/StickyNotes.app
+./build-app.sh && open "build/Sticky Notes.app"
 
 # JS-only fast iteration (requires .app already built)
-cd editor-web && npm run build && cp dist/editor.bundle.js ../build/StickyNotes.app/Contents/Resources/Editor/ && open ../build/StickyNotes.app
+cd editor-web && npm run build && cp dist/editor.bundle.js "../build/Sticky Notes.app/Contents/Resources/Editor/" && open "../build/Sticky Notes.app"
 ```
 
 ## Architecture
@@ -173,5 +173,5 @@ Sources/StickyNotes/Views/SettingsView.swift             # Settings 창 (Cmd+,)
 
 - **Swift**: `print()` → Xcode/terminal 콘솔
 - **JS**: `console.log()` → Swift 콘솔로 전달됨
-- **DOM 검사**: Safari > Develop > [Mac] > StickyNotes > index.html
+- **DOM 검사**: Safari > Develop > [Mac] > Sticky Notes > index.html
 - **Syntax tree 덤프**: Safari 콘솔에서 `dumpTree()` 실행 — 모든 노드명/위치/텍스트 출력

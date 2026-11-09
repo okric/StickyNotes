@@ -1,7 +1,7 @@
 #!/bin/bash
 # Packages an already signed (and ideally stapled) .app into the styled DMG.
 #
-#   Scripts/create-dmg.sh build/StickyNotes.app build
+#   Scripts/create-dmg.sh "build/Sticky Notes.app" build
 #
 # Kept separate from build-app.sh so a DMG can be rebuilt from a finished,
 # notarized app without re-submitting it to Apple.
@@ -12,9 +12,10 @@ APP_DIR="${1:?usage: create-dmg.sh <App.app> <output-dir>}"
 BUILD_DIR="${2:?usage: create-dmg.sh <App.app> <output-dir>}"
 APP_NAME="$(basename "$APP_DIR" .app)"
 VOL_NAME="${DMG_VOLUME_NAME:-MD Sticky Notes}"
+DMG_BASENAME="${DMG_BASENAME:-MDStickyNotes}"
 
 DMG_TMP="$BUILD_DIR/tmp.dmg"
-DMG_PATH="$BUILD_DIR/MD$APP_NAME.dmg"
+DMG_PATH="$BUILD_DIR/$DMG_BASENAME.dmg"
 DMG_DIR="$BUILD_DIR/dmg"
 rm -rf "$DMG_DIR" "$DMG_PATH" "$DMG_TMP"
 mkdir -p "$DMG_DIR"

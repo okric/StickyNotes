@@ -27,8 +27,9 @@ A native macOS sticky note app with Obsidian-style markdown live preview, built 
 - **Multiple Colors**: Yellow, pink, blue, green, purple, orange
 - **Adjustable Opacity**: Transparency slider for each note
 - **Auto-Save**: Edits are written straight back to the file
-- **Open With**: open any `.md` file from Finder (or `open -a StickyNotes note.md`); it is edited in place, wherever it lives
+- **Open With**: open any `.md` file from Finder (or `open -a "Sticky Notes" note.md`); it is edited in place, wherever it lives
 - **Folder is the source of truth**: top-level `.md` files in the notes folder open as stickies at launch; drop a file in and relaunch
+- **Close moves to Trash**: closing a sticky moves its `.md` to the Trash, with a short Undo toast
 - **Remote Notes**: File > Open Note URL… (Cmd+Shift+O) opens a shared Notes link (`…/n/<id>`) as a sticky; add a `notes`-scope token in Settings to edit it (read-only without one)
 - **Notes Folder Settings**: pick any folder, or create `~/Documents/Sticky Notes` (Cmd+,)
 
@@ -57,7 +58,7 @@ cd editor-web && npm ci && cd ..
 ./build-app.sh
 
 # Run
-open build/StickyNotes.app
+open "build/Sticky Notes.app"
 ```
 
 ### Prebuilt DMG
@@ -111,10 +112,11 @@ Notes are **not** kept in a database or `UserDefaults`:
 
 - The index stores only presentation metadata — never note bodies.
 - Edits are written to the `.md` file after a 500 ms debounce, atomically.
-- Closing a note window removes it from the app but **keeps the file**. Any
-  top-level `.md` file in the notes folder that isn't open reopens as a sticky
-  at the next launch (subfolders are not scanned).
-- Finder "Open With" and `open -a StickyNotes file.md` add a note for that file
+- Closing a note window moves its Markdown file to the **Trash** and shows a
+  short Undo toast; remote notes are only unlinked. Any top-level `.md` file in
+  the notes folder that isn't open reopens as a sticky at the next launch
+  (subfolders are not scanned).
+- Finder "Open With" and `open -a "Sticky Notes" file.md` add a note for that file
   in place; the file is never copied into the notes folder.
 - Files changed externally are picked up the next time the app launches.
 - Notes created by the upstream version (stored in `UserDefaults`) are exported
@@ -147,13 +149,13 @@ open StickyNotes.xcodeproj
 
 ```bash
 # Full build + DMG from the command line
-./build-app.sh && open build/StickyNotes.app
+./build-app.sh && open "build/Sticky Notes.app"
 
 # JS-only fast iteration (Xcode pre-build phase rebuilds the bundle when
 # editor-web/src changed; this manual path skips the full app rebuild)
 cd editor-web && npm run build && \
-  cp dist/editor.bundle.js ../build/StickyNotes.app/Contents/Resources/Editor/ && \
-  open ../build/StickyNotes.app
+  cp dist/editor.bundle.js ../"build/Sticky Notes.app/Contents/Resources/Editor/" && \
+  open "../build/Sticky Notes.app"
 ```
 
 ### Releasing
@@ -166,7 +168,7 @@ CODESIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
 
 Without `NOTARY_PROFILE` the build is signed but not notarized, which is fine
 for local use. Gatekeeper must accept the app before publishing:
-`spctl -a -t exec -vv build/StickyNotes.app`.
+`spctl -a -t exec -vv "build/Sticky Notes.app"`.
 
 `xcodebuild` and every Debug/Release/DerivedData copy registers itself with
 Launch Services, which shows up as several "Sticky Notes" apps in Finder and

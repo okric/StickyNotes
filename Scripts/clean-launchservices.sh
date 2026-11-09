@@ -1,8 +1,8 @@
 #!/bin/bash
 # Removes duplicate "Sticky Notes" entries from Finder / Launchpad by
-# unregistering every StickyNotes.app copy from Launch Services except one.
+# unregistering every copy from Launch Services except one.
 #
-#   Scripts/clean-launchservices.sh                  keep /Applications copy, else build/StickyNotes.app
+#   Scripts/clean-launchservices.sh                  keep /Applications copy, else build/Sticky Notes.app
 #   Scripts/clean-launchservices.sh <path/to.app>    keep that copy
 #   Scripts/clean-launchservices.sh --purge          also delete stale build products
 #
@@ -16,7 +16,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-APP_NAME="StickyNotes"
+APP_NAME="Sticky Notes"
+PROJECT_NAME="StickyNotes"
 BUNDLE_ID="com.mdstickynotes"
 LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister"
 
@@ -44,7 +45,7 @@ if [ "$PURGE" -eq 1 ]; then
     for dir in \
         "$ROOT/build/DerivedData/Build/Products/Debug" \
         "$ROOT/build/DerivedData/Build/Products/Release" \
-        "$HOME/Library/Developer/Xcode/DerivedData/${APP_NAME}-"*; do
+        "$HOME/Library/Developer/Xcode/DerivedData/${PROJECT_NAME}-"*; do
         [ -e "$dir" ] || continue
         rm -rf "$dir"
         echo "removed:      $dir"

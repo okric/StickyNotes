@@ -434,15 +434,30 @@ class NoteWindowController: NSWindowController, NSWindowDelegate {
         guard let coordinator = coordinator else { return true }
         if coordinator.isQuitting { return true }
 
-        guard let current = coordinator.noteManager.getNote(note.id),
-              !current.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        guard let current = coordinator.noteManager.getNote(note.id) else {
+            return true
+        }
+
+        if current.isRemote {
+            let alert = NSAlert()
+            alert.messageText = "Close this note?"
+            alert.informativeText = "It stays on the server; open its link to show it again."
+            alert.addButton(withTitle: "Close")
+            alert.addButton(withTitle: "Cancel")
+            alert.alertStyle = .warning
+            return alert.runModal() == .alertFirstButtonReturn
+        }
+
+        // An empty note has nothing to lose; it is still recoverable from the
+        // Trash through the undo toast.
+        guard !current.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return true
         }
 
         let alert = NSAlert()
-        alert.messageText = "Delete this note?"
-        alert.informativeText = "This note has content that will be lost."
-        alert.addButton(withTitle: "Delete")
+        alert.messageText = "Move this note to the Trash?"
+        alert.informativeText = "“\(current.title).md” will be moved to the Trash. You can undo this right after."
+        alert.addButton(withTitle: "Move to Trash")
         alert.addButton(withTitle: "Cancel")
         alert.alertStyle = .warning
 
