@@ -61,20 +61,14 @@ The full proposal lives next to the Notes service:
 
 ## Release pipeline
 
-- **Notarization credentials are not on this machine.** The app now builds
-  signed with the Developer ID identity, and `build-app.sh` notarizes, staples
-  and Gatekeeper-checks when `NOTARY_PROFILE` is set. One-time setup:
+- **Notarization** uses the `okric-notary` notarytool keychain profile. The app
+  builds signed with the Developer ID identity, and `build-app.sh` notarizes,
+  staples and Gatekeeper-checks when `NOTARY_PROFILE` is set:
 
   ```bash
-  xcrun notarytool store-credentials "MDStickyNotes" \
-    --apple-id <apple-id> --team-id TEAMID --password <app-specific-password>
   CODESIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
-    NOTARY_PROFILE=MDStickyNotes ./build-app.sh
+    NOTARY_PROFILE=okric-notary ./build-app.sh
   ```
-
-  Until then the DMG is signed but not notarized: Gatekeeper says
-  "unidentified developer" until the user right-clicks → Open, or runs
-  `xattr -d com.apple.quarantine`.
 - **Publish steps** are still manual: tag, `gh release create`, upload
   `build/MDStickyNotes.dmg`, then verify the app extracted from the downloaded
   DMG with `spctl -a -t exec -vv` (never assess the staged copy).

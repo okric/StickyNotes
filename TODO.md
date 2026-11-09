@@ -3,9 +3,7 @@
 ## Release pipeline
 
 - [ ] Notarize the 1.3.0 build. Signing, stapling and the `spctl` gate are
-      wired (`NOTARY_PROFILE=... ./build-app.sh`), but this machine has no
-      `notarytool` keychain profile yet. One-time setup:
-      `xcrun notarytool store-credentials "MDStickyNotes" --apple-id … --team-id TEAMID --password …`
+      wired: `CODESIGN_IDENTITY=... NOTARY_PROFILE=okric-notary ./build-app.sh`.
 - [ ] Publish: tag `v1.3.0`, `gh release create`, upload `build/MDStickyNotes.dmg`,
       then `spctl -a -t exec -vv` the app extracted from the downloaded DMG.
 - [ ] Decide whether to add Sparkle 2 auto-updates (needs `SUFeedURL`,

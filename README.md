@@ -151,13 +151,9 @@ cd editor-web && npm run build && \
 ### Releasing
 
 ```bash
-# One-time: store notarization credentials in the keychain
-xcrun notarytool store-credentials "MDStickyNotes" \
-  --apple-id you@example.com --team-id TEAMID --password <app-specific-password>
-
 # Signed, notarized, stapled app + DMG
 CODESIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
-  NOTARY_PROFILE=MDStickyNotes ./build-app.sh
+  NOTARY_PROFILE=okric-notary ./build-app.sh
 ```
 
 Without `NOTARY_PROFILE` the build is signed but not notarized, which is fine
