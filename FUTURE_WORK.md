@@ -44,17 +44,31 @@ Open items:
 
 `NoteSourceKind.remoteURL` exists in the model and decodes, but nothing creates
 or reads it. The Notes service (`https://notes.example.com`, LAN
-`http://192.168.1.44:8094`) can be used today only as one-way capture: a
-`write`-scope token can `POST /api/notes`, nothing else.
+`http://192.168.1.44:8094`) gained what a sticky needs on 2026-11-08:
 
-Not usable as-is for a two-way sticky because:
+- a `notes` scope (read + create + edit, no delete/order/share);
+- `revision` on every note, `ETag` on `GET /api/notes/:id` (`If-None-Match` →
+  304) and conditional `PATCH` with `If-Match` (409 returns the current note);
+- a per-note share URL (`/n/<shareId>`) plus open `GET /api/shared/<shareId>`,
+  which returns `id` + `revision` — enough to bootstrap a client from a pasted
+  link.
 
-- no per-note URL to "open" (the SPA has no routing);
-- no incremental sync (`GET /api/notes` returns every body and rendered HTML);
-- no optimistic concurrency (PATCH is unconditional last-write-wins);
-- no read+edit scope for a third-party client (write = create only);
-- no token pairing flow for a desktop app (tokens are minted by hand on the
-  server).
+So "open one note, edit it, save it back" is possible now. Remaining gaps are
+quality-of-life, not blockers:
+
+- `GET /api/notes` still returns `body` and `html` for every note and has no
+  `since`/`fields`, so discovery and deletion polling is not cheap;
+- no batch write for an offline queue (one `PATCH` per note);
+- tokens are still minted by hand on the server (no device pairing), and a
+  `notes` token cannot share/unshare — the user shares in the web UI;
+- a URL only exists for **shared** notes (public read-only link). An
+  authenticated open-by-id link does not exist, by design.
+
+Client-side work still to do in StickyNotes: `NoteSourceKind.remote` with
+`remoteID`/base URL/`revision`, bearer token in the Keychain, "Open URL…"
+parsing `/n/<shareId>` (or `/api/shared/<shareId>`), debounced `PATCH` with
+`If-Match`, 409 conflict UI, per-note `If-None-Match` polling, and a local cache
+so a note opens offline.
 
 The full proposal lives next to the Notes service:
 `~/Projects/Notes/.work/PLAN-sticky-client.md`.
