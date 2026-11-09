@@ -491,6 +491,9 @@ class NoteWindowController: NSWindowController, NSWindowDelegate {
 
     var noteId: UUID { note.id }
 
+    /// Size of the area that shows note content (preview / snapshot / WebView).
+    var contentSize: NSSize { contentContainer.bounds.size }
+
     /// Access the shared WKWebView (only valid when this window is active)
     var webView: WKWebView? {
         hasWebView ? SharedWebViewManager.shared.webView : nil

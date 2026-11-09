@@ -150,6 +150,18 @@ class SharedWebViewManager {
         }
 
         let note = notes[index]
+        let targetController = coordinator?.windowManager.getWindowController(for: note.id)
+
+        // The shared WebView is sitting in the active window. Render this note
+        // at the size of the window that will display the snapshot, otherwise
+        // the image is aspect-scaled into a smaller window and its text shrinks.
+        let activeSize = webView.superview?.bounds.size ?? webView.frame.size
+        let targetSize = targetController?.contentSize ?? activeSize
+        if targetSize != webView.frame.size {
+            webView.frame.size = targetSize
+            webView.needsLayout = true
+            webView.layoutSubtreeIfNeeded()
+        }
 
         // Set content + enter snapshot mode in one JS call (single transaction, single DOM update).
         // suppressContentChange in JS prevents the contentChanged debounce from firing
@@ -172,7 +184,13 @@ class SharedWebViewManager {
                 self.webView.evaluateJavaScript("window.endSnapshotMode()")
 
                 if let image = image {
-                    self.coordinator?.windowManager.getWindowController(for: note.id)?.showSnapshot(image)
+                    targetController?.showSnapshot(image)
+                }
+
+                // Back to the active window's size for the next note / reveal.
+                if self.webView.frame.size != activeSize {
+                    self.webView.frame.size = activeSize
+                    self.webView.needsLayout = true
                 }
 
                 // Continue to next note

@@ -29,6 +29,9 @@ All notable changes to MD Sticky Notes will be documented in this file.
 - Startup preview renders Markdown with the editor's type scale (headings,
   lists, code, quotes, inline styles) instead of raw source, so unfocused notes
   no longer look smaller than they do once clicked
+- Pre-rendered snapshots are captured at each note window's own size. The shared
+  WebView lives in the active window, so snapshots used to be aspect-fitted into
+  smaller windows, shrinking their text until the note was clicked
 
 ### Open Markdown files from Finder (fork)
 
