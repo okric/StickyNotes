@@ -45,6 +45,7 @@ class AppCoordinator: ObservableObject {
         SharedWebViewManager.shared.coordinator = self
 
         setupBindings()
+        importNotesFromNotesFolder()
         openInitialWindows()
         startRemotePolling()
 
@@ -495,8 +496,16 @@ class AppCoordinator: ObservableObject {
         }
     }
 
+    /// Markdown files dropped into the notes folder while the app was closed
+    /// open as stickies on launch.
+    private func importNotesFromNotesFolder() {
+        noteManager.importNotesFromFolder { index in
+            calculateNewNotePosition(additionalOffset: index)
+        }
+    }
+
     /// Calculate position for a new note: mouse cursor's screen, cascade from center
-    private func calculateNewNotePosition() -> CGPoint {
+    private func calculateNewNotePosition(additionalOffset: Int = 0) -> CGPoint {
         let noteSize = CGSize(width: 300, height: 360)
 
         let mouseLocation = NSEvent.mouseLocation
@@ -508,6 +517,7 @@ class AppCoordinator: ObservableObject {
             windowManager.getWindowController(for: $0)?.window?.frame
         }
         let count = existingFrames.filter { visibleFrame.intersects($0) }.count
+            + additionalOffset
 
         let step: CGFloat = 30
         let x = visibleFrame.midX - noteSize.width / 2 + CGFloat(count) * step

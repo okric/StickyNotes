@@ -2,6 +2,16 @@
 
 All notable changes to MD Sticky Notes will be documented in this file.
 
+## [1.3.1] - 2026-11-08
+
+### Notes folder is scanned at launch
+
+- Every top-level Markdown file in the notes folder now opens as a sticky on
+  launch, even when it was never opened by the app (drop a `.md` in, relaunch)
+- Closing a sticky still keeps its file, so it comes back on the next launch
+- Subfolders are not scanned (the folder may be a whole Obsidian vault)
+- A welcome note is only created when the index *and* the notes folder are empty
+
 ## [1.3.0] - 2026-11-08
 
 ### App icon and notarized releases (fork)

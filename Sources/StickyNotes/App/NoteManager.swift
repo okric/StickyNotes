@@ -56,6 +56,14 @@ class NoteManager: ObservableObject {
             }
         }
 
+        // Markdown files already in the folder become stickies at launch (see
+        // AppCoordinator.importNotesFromNotesFolder). Don't drop a welcome note
+        // next to them.
+        if let folder = settings.defaultFolderURL,
+           !markdownFiles(in: folder).isEmpty {
+            return
+        }
+
         createDefaultNote()
     }
 
@@ -213,6 +221,63 @@ class NoteManager: ObservableObject {
     /// Remote notes that are currently open (the index only holds open notes).
     var remoteNotes: [Note] {
         notes.filter { $0.isRemote }
+    }
+
+    /// Register Markdown files that were added to the notes folder while the
+    /// app was closed. Only top-level files are considered: the folder can be
+    /// an Obsidian vault with thousands of notes in subfolders.
+    /// - Parameter position: Window position for the n-th imported note.
+    /// - Returns: The notes added, in file-name order.
+    @discardableResult
+    func importNotesFromFolder(
+        position: (Int) -> CGPoint = { _ in CGPoint(x: 100, y: 100) }
+    ) -> [Note] {
+        guard let folder = settings.ensureDefaultFolder() else { return [] }
+
+        let openFiles = notes
+            .filter { !$0.isRemote }
+            .map { URL(fileURLWithPath: $0.path) }
+
+        let colors = NoteColor.allCases
+        var imported: [Note] = []
+
+        for url in markdownFiles(in: folder) {
+            if openFiles.contains(where: { Self.sameFile($0, url) }) { continue }
+            guard let content = try? String(contentsOf: url, encoding: .utf8) else {
+                print("[NoteManager] Skipped unreadable file: \(url.path)")
+                continue
+            }
+
+            imported.append(Note(
+                path: url.path,
+                title: url.deletingPathExtension().lastPathComponent,
+                content: content,
+                position: position(imported.count),
+                colorTheme: colors[(notes.count + imported.count) % colors.count].rawValue
+            ))
+        }
+
+        guard !imported.isEmpty else { return [] }
+        notes.append(contentsOf: imported)
+        store.saveIndex(notes)
+        print("[NoteManager] Opened \(imported.count) file(s) from \(folder.path)")
+        return imported
+    }
+
+    /// Markdown files directly inside `folder`, sorted by name.
+    private func markdownFiles(in folder: URL) -> [URL] {
+        let entries = (try? FileManager.default.contentsOfDirectory(
+            at: folder,
+            includingPropertiesForKeys: [.isRegularFileKey],
+            options: [.skipsHiddenFiles]
+        )) ?? []
+
+        return entries
+            .filter { Self.isMarkdownFile($0) }
+            .sorted {
+                $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent)
+                    == .orderedAscending
+            }
     }
 
     /// Create a new note file in the default folder and register it.
