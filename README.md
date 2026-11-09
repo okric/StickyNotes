@@ -29,7 +29,8 @@ A native macOS sticky note app with Obsidian-style markdown live preview, built 
 - **Auto-Save**: Edits are written straight back to the file
 - **Open With**: open any `.md` file from Finder (or `open -a "Sticky Notes" note.md`); it is edited in place, wherever it lives
 - **Folder is the source of truth**: top-level `.md` files in the notes folder open as stickies at launch; drop a file in and relaunch
-- **Close moves to Trash**: closing a sticky moves its `.md` to the Trash, with a short Undo toast
+- **Live folder sync**: files added, deleted or edited in the notes folder update the stickies without a relaunch (an open note keeps your text if you have unsaved keystrokes)
+- **Close moves to Trash**: closing a sticky moves its `.md` to the Trash, where you can restore it
 - **Remote Notes**: File > Open Note URL… (Cmd+Shift+O) opens a shared Notes link (`…/n/<id>`) as a sticky; add a `notes`-scope token in Settings to edit it (read-only without one)
 - **Notes Folder Settings**: pick any folder, or create `~/Documents/Sticky Notes` (Cmd+,)
 
@@ -112,13 +113,15 @@ Notes are **not** kept in a database or `UserDefaults`:
 
 - The index stores only presentation metadata — never note bodies.
 - Edits are written to the `.md` file after a 500 ms debounce, atomically.
-- Closing a note window moves its Markdown file to the **Trash** and shows a
-  short Undo toast; remote notes are only unlinked. Any top-level `.md` file in
-  the notes folder that isn't open reopens as a sticky at the next launch
+- Closing a note window moves its Markdown file to the **Trash**; restore it
+  from there. Remote notes are only unlinked. Any top-level `.md` file in the
+  notes folder that isn't open reopens as a sticky at the next launch
   (subfolders are not scanned).
 - Finder "Open With" and `open -a "Sticky Notes" file.md` add a note for that file
   in place; the file is never copied into the notes folder.
-- Files changed externally are picked up the next time the app launches.
+- Files added, deleted or changed in the notes folder are picked up live through
+  an FSEvents watcher. An open note with unsaved keystrokes keeps its text; the
+  external change is skipped until the next pass.
 - Notes created by the upstream version (stored in `UserDefaults`) are exported
   to the notes folder on first launch, once.
 

@@ -80,6 +80,7 @@ Sources/StickyNotes/Bridge/SharedEditorBridge.swift      # noteId 기반 Swift-J
 Sources/StickyNotes/Views/NoteWindow/NoteWindowController.swift  # WebView reparent, snapshot/preview
 Sources/StickyNotes/App/AppCoordinator.swift             # 앱 조율 (Combine)
 Sources/StickyNotes/App/NotesStore.swift                 # index.json/settings.json + .md 읽기/쓰기
+Sources/StickyNotes/App/NotesFolderMonitor.swift         # FSEvents 폴더 감시, 외부 변경 동기화
 Sources/StickyNotes/App/AppSettings.swift                # 노트 폴더 설정 (기본: ~/Documents/Sticky Notes)
 Sources/StickyNotes/Views/SettingsView.swift             # Settings 창 (Cmd+,)
 ```

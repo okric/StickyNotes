@@ -15,9 +15,19 @@ All notable changes to MD Sticky Notes will be documented in this file.
 
 - Closing a sticky asks once, then moves its `.md` to the system Trash instead
   of leaving it in the folder
-- A short toast offers Undo (restores the file and reopens the sticky)
+- Recovery is the Trash itself: no in-app undo, no extra UI
 - Remote notes keep their server copy; only the local link and cache are removed
 - Quitting the app never trashes notes; they reopen on the next launch
+
+### Live notes folder sync
+
+- The notes folder is watched with FSEvents while the app runs
+- A `.md` dropped into the folder opens as a sticky without a relaunch; deleting
+  a file closes its sticky (nothing is trashed — the file is already gone)
+- Bodies edited in another editor reload into the open sticky when it is idle; a
+  note with unsaved keystrokes keeps the user's text and is skipped
+- Changing the notes folder in Settings re-watches it and syncs the new folder
+- All passes stay top-level only; subfolders are never scanned
 
 ## [1.3.1] - 2026-11-08
 
@@ -25,7 +35,7 @@ All notable changes to MD Sticky Notes will be documented in this file.
 
 - Every top-level Markdown file in the notes folder now opens as a sticky on
   launch, even when it was never opened by the app (drop a `.md` in, relaunch)
-- Closing a sticky still keeps its file, so it comes back on the next launch
+- Closing a sticky kept its file in this release; 1.3.2 moves it to the Trash
 - Subfolders are not scanned (the folder may be a whole Obsidian vault)
 - A welcome note is only created when the index *and* the notes folder are empty
 

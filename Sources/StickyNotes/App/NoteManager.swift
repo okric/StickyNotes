@@ -223,45 +223,110 @@ class NoteManager: ObservableObject {
         notes.filter { $0.isRemote }
     }
 
-    /// Register Markdown files that were added to the notes folder while the
-    /// app was closed. Only top-level files are considered: the folder can be
-    /// an Obsidian vault with thousands of notes in subfolders.
-    /// - Parameter position: Window position for the n-th imported note.
-    /// - Returns: The notes added, in file-name order.
+    /// What a pass over the notes folder changed on disk.
+    struct FolderSyncResult {
+        var added: [Note] = []
+        var changed: [Note] = []
+        var removed: [UUID] = []
+    }
+
+    /// Reconcile the index with the notes folder after it changed on disk.
+    ///
+    /// New files become notes, deleted files drop out, and edited files reload
+    /// their body — unless local edits are still pending, in which case the note
+    /// is left alone. Only top-level files inside the notes folder are considered:
+    /// the folder can be an Obsidian vault with thousands of notes in subfolders.
+    /// - Parameter position: Window position for the n-th added note.
     @discardableResult
-    func importNotesFromFolder(
+    func syncWithFolder(
         position: (Int) -> CGPoint = { _ in CGPoint(x: 100, y: 100) }
-    ) -> [Note] {
-        guard let folder = settings.ensureDefaultFolder() else { return [] }
+    ) -> FolderSyncResult {
+        var result = FolderSyncResult()
+        guard let folder = settings.defaultFolderURL else { return result }
 
-        let openFiles = notes
-            .filter { !$0.isRemote }
-            .map { URL(fileURLWithPath: $0.path) }
+        let folderURL = folder.standardizedFileURL
+        let files = markdownFiles(in: folder)
+        let localNotes = notes.filter {
+            !$0.isRemote && Self.isInside(URL(fileURLWithPath: $0.path), folderURL)
+        }
 
-        let colors = NoteColor.allCases
-        var imported: [Note] = []
+        // Files that no longer exist: forget the note, unless edits are pending
+        // (the next autosave would recreate the file anyway).
+        var removedIds = Set<UUID>()
+        for note in localNotes {
+            let url = URL(fileURLWithPath: note.path)
+            if files.contains(where: { Self.sameFile(url, $0) }) { continue }
+            if isDirty(note.id) { continue }
+            removedIds.insert(note.id)
+        }
 
-        for url in markdownFiles(in: folder) {
-            if openFiles.contains(where: { Self.sameFile($0, url) }) { continue }
+        // Files that appeared since the last pass.
+        let known = localNotes.map { URL(fileURLWithPath: $0.path) }
+        var added: [Note] = []
+        for url in files where !known.contains(where: { Self.sameFile($0, url) }) {
             guard let content = try? String(contentsOf: url, encoding: .utf8) else {
                 print("[NoteManager] Skipped unreadable file: \(url.path)")
                 continue
             }
-
-            imported.append(Note(
+            let colors = NoteColor.allCases
+            added.append(Note(
                 path: url.path,
                 title: url.deletingPathExtension().lastPathComponent,
                 content: content,
-                position: position(imported.count),
-                colorTheme: colors[(notes.count + imported.count) % colors.count].rawValue
+                position: position(added.count),
+                colorTheme: colors[(notes.count + added.count) % colors.count].rawValue
             ))
         }
 
-        guard !imported.isEmpty else { return [] }
-        notes.append(contentsOf: imported)
+        // Bodies edited outside the app. Skip notes with unsaved local keystrokes.
+        var changed: [Note] = []
+        for note in localNotes where !removedIds.contains(note.id) && !isDirty(note.id) {
+            let url = URL(fileURLWithPath: note.path)
+            guard files.contains(where: { Self.sameFile(url, $0) }),
+                  let disk = try? String(contentsOf: url, encoding: .utf8),
+                  disk != note.content else { continue }
+
+            var updated = note
+            updated.content = disk
+            changed.append(updated)
+        }
+
+        guard !removedIds.isEmpty || !added.isEmpty || !changed.isEmpty else {
+            return result
+        }
+
+        if !removedIds.isEmpty {
+            notes.removeAll { removedIds.contains($0.id) }
+            result.removed = Array(removedIds)
+        }
+        for updated in changed {
+            if let index = notes.firstIndex(where: { $0.id == updated.id }) {
+                notes[index] = updated
+            }
+        }
+        if !added.isEmpty {
+            notes.append(contentsOf: added)
+        }
         store.saveIndex(notes)
-        print("[NoteManager] Opened \(imported.count) file(s) from \(folder.path)")
-        return imported
+
+        result.added = added
+        result.changed = changed
+        print("[NoteManager] Notes folder changed: +\(added.count) ~\(changed.count) -\(removedIds.count)")
+        return result
+    }
+
+    /// Notes whose body has unsaved edits, so an external reload would stomp them.
+    private func isDirty(_ noteId: UUID) -> Bool {
+        dirtyNoteIds.contains(noteId)
+    }
+
+    /// True when `url` sits directly in `folder`.
+    ///
+    /// Compares the parent directory by file identity rather than path text:
+    /// `/var/...` and `/private/var/...` name the same folder, and a deleted
+    /// file cannot resolve its own path.
+    private static func isInside(_ url: URL, _ folder: URL) -> Bool {
+        sameFile(url.deletingLastPathComponent(), folder)
     }
 
     /// Markdown files directly inside `folder`, sorted by name.
@@ -334,7 +399,8 @@ class NoteManager: ObservableObject {
 
     /// Update note content
     func updateNoteContent(_ noteId: UUID, content: String) {
-        guard let index = notes.firstIndex(where: { $0.id == noteId }) else {
+        guard let index = notes.firstIndex(where: { $0.id == noteId }),
+              notes[index].content != content else {
             return
         }
 
@@ -400,22 +466,12 @@ class NoteManager: ObservableObject {
         scheduleSave()
     }
 
-    /// A note whose file was moved to the Trash, kept so the move can be undone.
-    struct TrashedNote {
-        let note: Note
-        /// Original location the file can be restored to.
-        let fileURL: URL
-        /// Where the file now sits in the Trash.
-        let trashedURL: URL
-    }
-
     /// Remove a note from the app.
     ///
-    /// With `trashingFile`, the Markdown file moves to the system Trash and the
-    /// returned value can be passed to `restoreTrashedNote`. Remote notes keep
-    /// only their cached body, which is deleted either way.
-    @discardableResult
-    func deleteNote(_ noteId: UUID, trashingFile: Bool = false) -> TrashedNote? {
+    /// With `trashingFile`, the Markdown file moves to the system Trash, where
+    /// the user can restore it. Remote notes keep only their cached body, which
+    /// is deleted either way.
+    func deleteNote(_ noteId: UUID, trashingFile: Bool = false) {
         // Flush pending edits so closing a window never loses the last keystrokes.
         if dirtyNoteIds.contains(noteId), let note = getNote(noteId) {
             if note.isRemote {
@@ -426,21 +482,17 @@ class NoteManager: ObservableObject {
             dirtyNoteIds.remove(noteId)
         }
 
-        guard let note = getNote(noteId) else { return nil }
+        guard let note = getNote(noteId) else { return }
 
         if note.isRemote {
             store.removeRemoteContent(for: note)
         }
 
-        var trashed: TrashedNote?
         if trashingFile, let url = note.fileURL,
            FileManager.default.fileExists(atPath: url.path) {
-            var resulting: NSURL?
             do {
-                try FileManager.default.trashItem(at: url, resultingItemURL: &resulting)
-                if let resulting = resulting as URL? {
-                    trashed = TrashedNote(note: note, fileURL: url, trashedURL: resulting)
-                }
+                try FileManager.default.trashItem(at: url, resultingItemURL: nil)
+                print("[NoteManager] Moved note \(noteId) to the Trash")
             } catch {
                 print("[NoteManager] Could not move \(url.path) to the Trash: \(error)")
             }
@@ -448,27 +500,7 @@ class NoteManager: ObservableObject {
 
         notes.removeAll { $0.id == noteId }
         store.saveIndex(notes)
-        if trashed != nil {
-            print("[NoteManager] Moved note \(noteId) to the Trash")
-        } else {
-            print("[NoteManager] Removed note \(noteId) from the index")
-        }
-        return trashed
-    }
-
-    /// Put a trashed note's file back and re-register the note under its old id.
-    func restoreTrashedNote(_ trashed: TrashedNote) throws {
-        let fileManager = FileManager.default
-        guard !fileManager.fileExists(atPath: trashed.fileURL.path) else {
-            throw CocoaError(.fileWriteFileExists)
-        }
-        try fileManager.moveItem(at: trashed.trashedURL, to: trashed.fileURL)
-
-        if !notes.contains(where: { $0.id == trashed.note.id }) {
-            notes.append(trashed.note)
-            store.saveIndex(notes)
-        }
-        print("[NoteManager] Restored note from the Trash: \(trashed.fileURL.path)")
+        print("[NoteManager] Removed note \(noteId) from the index")
     }
 
     /// Save a note immediately (for critical operations)

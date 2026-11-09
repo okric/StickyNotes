@@ -340,9 +340,10 @@ class NoteWindowController: NSWindowController, NSWindowDelegate {
         SharedWebViewManager.shared.setReadOnly(RemoteWriteAccess.isReadOnly(current))
     }
 
-    /// Apply a newer body fetched from the Notes API.
-    func applyRemoteUpdate(content: String) {
+    /// Apply a body changed outside the editor (Notes API or a file edit).
+    func applyExternalUpdate(content: String) {
         note.content = content
+        SharedWebViewManager.shared.invalidateCachedState(for: note.id)
         guard hasWebView else {
             showTextPreview()
             return
@@ -448,15 +449,14 @@ class NoteWindowController: NSWindowController, NSWindowDelegate {
             return alert.runModal() == .alertFirstButtonReturn
         }
 
-        // An empty note has nothing to lose; it is still recoverable from the
-        // Trash through the undo toast.
+        // An empty note has nothing to lose; it can be restored from the Trash.
         guard !current.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return true
         }
 
         let alert = NSAlert()
         alert.messageText = "Move this note to the Trash?"
-        alert.informativeText = "“\(current.title).md” will be moved to the Trash. You can undo this right after."
+        alert.informativeText = "“\(current.title).md” will be moved to the Trash. You can restore it from there."
         alert.addButton(withTitle: "Move to Trash")
         alert.addButton(withTitle: "Cancel")
         alert.alertStyle = .warning

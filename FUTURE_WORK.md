@@ -29,11 +29,10 @@ Open items:
 - **Read-only volumes and network shares.** Opening succeeds; the first save
   fails. `NoteManager` only logs the error. Surface a "could not save" state in
   the note window and keep edits in memory instead of dropping them.
-- **External changes while a note is open.** The file is re-read at launch and
-  when a file is opened from Finder, but an edit made in Obsidian while the
-  sticky is open is overwritten by the next autosave. Watch the file
-  (`DispatchSourceFileSystemObject` or `FSEventStream`) and either reload or
-  ask which copy wins.
+- **External changes while a note is open.** Shipped in 1.3.2: the notes folder
+  is watched with FSEvents and an edited file reloads into its sticky when no
+  local keystrokes are pending. Still open: an edit made while the sticky has
+  unsaved text is deferred, not merged — no conflict prompt exists.
 - **Duplicate apps in Finder / Launchpad.** Every registered copy (Debug,
   Release, DerivedData, mounted DMG) shows up as its own "Sticky Notes". Run
   `Scripts/clean-launchservices.sh --purge` after building; a running copy

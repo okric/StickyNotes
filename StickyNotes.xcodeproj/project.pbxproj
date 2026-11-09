@@ -18,7 +18,7 @@
 		637484C42C4A7064C4266113 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = D319DC00F39B7144CBE620E9 /* AppIcon.icns */; };
 		64BD8802AE918E4D1AF55459 /* LegacyImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84F4326241D64F5ECD08A675 /* LegacyImporter.swift */; };
 		6CDC78B2AD65AD1D51927FCE /* AppCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2C9AF8C1F7411AD0875E92 /* AppCoordinator.swift */; };
-		7107D8F03CBE281A805685BB /* TrashUndoToast.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C25EC9895BBC9F300C52D66 /* TrashUndoToast.swift */; };
+		74E4EF7DB16EE531ABD04C26 /* NotesFolderMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD6D76086672B50F2D9B7441 /* NotesFolderMonitor.swift */; };
 		7F2FC897E8F96EF6EA472069 /* MarkdownPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F952AC76D06B912B2930492 /* MarkdownPreview.swift */; };
 		7FD53CDB722D5F3B4AC52D22 /* NoteManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B886F33B3197717C78165B58 /* NoteManager.swift */; };
 		8E93750A5B1CFAD30D61EA3D /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDE69F17D9D7F72F804363A8 /* AppSettings.swift */; };
@@ -40,10 +40,10 @@
 		66C34EB50FDEBA034CD18AE9 /* RemoteCredentials.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteCredentials.swift; sourceTree = "<group>"; };
 		6D2C9AF8C1F7411AD0875E92 /* AppCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCoordinator.swift; sourceTree = "<group>"; };
 		757760E4AD39F9942A43FB66 /* RemoteNotesClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteNotesClient.swift; sourceTree = "<group>"; };
-		7C25EC9895BBC9F300C52D66 /* TrashUndoToast.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrashUndoToast.swift; sourceTree = "<group>"; };
 		84F4326241D64F5ECD08A675 /* LegacyImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyImporter.swift; sourceTree = "<group>"; };
 		B4AA9E7CEE822A3A8CC1DD67 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		B886F33B3197717C78165B58 /* NoteManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteManager.swift; sourceTree = "<group>"; };
+		BD6D76086672B50F2D9B7441 /* NotesFolderMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesFolderMonitor.swift; sourceTree = "<group>"; };
 		BDE69F17D9D7F72F804363A8 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		CB713CA7C95306884C35BB03 /* SharedWebViewManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedWebViewManager.swift; sourceTree = "<group>"; };
 		D319DC00F39B7144CBE620E9 /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
@@ -118,6 +118,7 @@
 				BDE69F17D9D7F72F804363A8 /* AppSettings.swift */,
 				84F4326241D64F5ECD08A675 /* LegacyImporter.swift */,
 				B886F33B3197717C78165B58 /* NoteManager.swift */,
+				BD6D76086672B50F2D9B7441 /* NotesFolderMonitor.swift */,
 				65AB489EFEBA441E9BB103F5 /* NotesStore.swift */,
 				66C34EB50FDEBA034CD18AE9 /* RemoteCredentials.swift */,
 				757760E4AD39F9942A43FB66 /* RemoteNotesClient.swift */,
@@ -132,7 +133,6 @@
 			isa = PBXGroup;
 			children = (
 				B4AA9E7CEE822A3A8CC1DD67 /* SettingsView.swift */,
-				7C25EC9895BBC9F300C52D66 /* TrashUndoToast.swift */,
 				F4F6C8786B24AA7FCDBAABDF /* NoteWindow */,
 			);
 			path = Views;
@@ -259,6 +259,7 @@
 				90D47C5608DB53CC72FB1C61 /* NoteColor.swift in Sources */,
 				7FD53CDB722D5F3B4AC52D22 /* NoteManager.swift in Sources */,
 				42B64CCC894F14DED9D9C667 /* NoteWindowController.swift in Sources */,
+				74E4EF7DB16EE531ABD04C26 /* NotesFolderMonitor.swift in Sources */,
 				5C63932B271D7E084481C9F6 /* NotesStore.swift in Sources */,
 				1C188B47D9240BE090968845 /* RemoteCredentials.swift in Sources */,
 				E8030DC50AA43B448A59D746 /* RemoteNotesClient.swift in Sources */,
@@ -267,7 +268,6 @@
 				DEC956DE15BF38F713B4F165 /* SharedEditorBridge.swift in Sources */,
 				F8109ABFEB96C999A328C0EA /* SharedWebViewManager.swift in Sources */,
 				501054FD3179F74231299EDE /* StickyNotesApp.swift in Sources */,
-				7107D8F03CBE281A805685BB /* TrashUndoToast.swift in Sources */,
 				4B93F54DA2B1FF7BD656FCCD /* WindowManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

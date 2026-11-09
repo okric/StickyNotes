@@ -358,6 +358,11 @@ class SharedWebViewManager {
         }
     }
 
+    /// Drop cached state for a note so the next switch reads its current body.
+    func invalidateCachedState(for noteId: UUID) {
+        stateCache.removeValue(forKey: noteId)
+    }
+
     /// Remove cached state for a deleted note
     func removeCachedState(for noteId: UUID) {
         stateCache.removeValue(forKey: noteId)

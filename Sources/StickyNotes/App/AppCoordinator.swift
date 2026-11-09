@@ -31,8 +31,8 @@ class AppCoordinator: ObservableObject {
     private var remoteSaveTimers: [UUID: Timer] = [:]
     private let remoteSaveDelay: TimeInterval = 0.8
 
-    /// Toast offering to undo the last move to the Trash.
-    private var trashToast: TrashUndoToast?
+    /// Watches the notes folder for files added, edited or deleted outside the app.
+    private var folderMonitor: NotesFolderMonitor?
 
     // MARK: - Initialization
 
@@ -48,8 +48,9 @@ class AppCoordinator: ObservableObject {
         SharedWebViewManager.shared.coordinator = self
 
         setupBindings()
-        importNotesFromNotesFolder()
+        syncNotesFolder()
         openInitialWindows()
+        startFolderMonitor()
         startRemotePolling()
 
         NotificationCenter.default.addObserver(
@@ -64,6 +65,7 @@ class AppCoordinator: ObservableObject {
     deinit {
         remotePollTimer?.invalidate()
         remoteSaveTimers.values.forEach { $0.invalidate() }
+        folderMonitor?.stop()
     }
 
     // MARK: - Public Methods
@@ -90,45 +92,7 @@ class AppCoordinator: ObservableObject {
         if isQuitting {
             return
         }
-        if let trashed = noteManager.deleteNote(noteId, trashingFile: true) {
-            showTrashUndoToast(for: trashed)
-        }
-    }
-
-    /// Offer to undo a close that moved the note's file to the Trash.
-    private func showTrashUndoToast(for trashed: NoteManager.TrashedNote) {
-        trashToast?.dismiss()
-        trashToast = nil
-
-        var toast: TrashUndoToast?
-        toast = TrashUndoToast(
-            title: trashed.note.title,
-            onUndo: { [weak self] in self?.undoTrash(trashed) },
-            onDismiss: { [weak self, weak toast] in
-                guard let self, let toast, self.trashToast === toast else { return }
-                self.trashToast = nil
-            }
-        )
-        trashToast = toast
-        toast?.present()
-    }
-
-    /// Put a trashed note back where it was and reopen its window.
-    private func undoTrash(_ trashed: NoteManager.TrashedNote) {
-        do {
-            try noteManager.restoreTrashedNote(trashed)
-        } catch {
-            let alert = NSAlert()
-            alert.messageText = "Could not restore the note"
-            alert.informativeText = "“\(trashed.fileURL.lastPathComponent)” is still in the Trash. \(error.localizedDescription)"
-            alert.alertStyle = .warning
-            NSApp.activate(ignoringOtherApps: true)
-            alert.runModal()
-            return
-        }
-
-        windowManager.openWindow(for: trashed.note, coordinator: self)
-        windowManager.bringToFront(trashed.note.id)
+        noteManager.deleteNote(noteId, trashingFile: true)
     }
 
     /// Show the standard Open panel and open the chosen Markdown files.
@@ -289,7 +253,7 @@ class AppCoordinator: ObservableObject {
                     revision: remote.revision
                 )
                 self.windowManager.getWindowController(for: note.id)?
-                    .applyRemoteUpdate(content: remote.body)
+                    .applyExternalUpdate(content: remote.body)
             }
         }
         group.notify(queue: .main) { [weak self] in
@@ -312,7 +276,7 @@ class AppCoordinator: ObservableObject {
                 revision: remote.revision
             )
             self.windowManager.getWindowController(for: note.id)?
-                .applyRemoteUpdate(content: remote.body)
+                .applyExternalUpdate(content: remote.body)
         }
     }
 
@@ -391,7 +355,7 @@ class AppCoordinator: ObservableObject {
                 revision: remote.revision
             )
             windowManager.getWindowController(for: noteId)?
-                .applyRemoteUpdate(content: remote.body)
+                .applyExternalUpdate(content: remote.body)
         }
     }
 
@@ -415,8 +379,11 @@ class AppCoordinator: ObservableObject {
 
     /// Handle note content changes from the editor
     func handleContentChange(noteId: UUID, content: String) {
-        noteManager.updateNoteContent(noteId, content: content)
+        // The editor echoes content pushed in from the API or the file system;
+        // it is not a user edit, so nothing needs saving.
+        guard noteManager.getNote(noteId)?.content != content else { return }
 
+        noteManager.updateNoteContent(noteId, content: content)
         if noteManager.getNote(noteId)?.isRemote == true {
             scheduleRemoteSave(noteId)
         }
@@ -527,6 +494,15 @@ class AppCoordinator: ObservableObject {
                 self?.syncWindowsWithNotes(notes)
             }
             .store(in: &cancellables)
+
+        settings.$defaultFolderPath
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.syncNotesFolder()
+                self?.startFolderMonitor()
+            }
+            .store(in: &cancellables)
     }
 
     /// Open windows for all persisted notes
@@ -536,11 +512,34 @@ class AppCoordinator: ObservableObject {
         }
     }
 
-    /// Markdown files dropped into the notes folder while the app was closed
-    /// open as stickies on launch.
-    private func importNotesFromNotesFolder() {
-        noteManager.importNotesFromFolder { index in
+    /// Watch the notes folder for changes made outside the app.
+    private func startFolderMonitor() {
+        folderMonitor?.stop()
+        folderMonitor = nil
+
+        guard let folder = settings.defaultFolderURL else { return }
+        let monitor = NotesFolderMonitor(folder: folder) { [weak self] in
+            self?.syncNotesFolder()
+        }
+        folderMonitor = monitor
+        monitor.start()
+    }
+
+    /// Reconcile open notes with the notes folder: register files dropped in,
+    /// close notes whose file was deleted, and reload externally edited bodies.
+    private func syncNotesFolder() {
+        let result = noteManager.syncWithFolder { index in
             calculateNewNotePosition(additionalOffset: index)
+        }
+
+        // Removed notes disappear through syncWindowsWithNotes; here we only
+        // need to open and refresh.
+        for note in result.added {
+            guard let current = noteManager.getNote(note.id) else { continue }
+            windowManager.openWindow(for: current, coordinator: self)
+        }
+        for note in result.changed {
+            windowManager.getWindowController(for: note.id)?.applyExternalUpdate(content: note.content)
         }
     }
 
