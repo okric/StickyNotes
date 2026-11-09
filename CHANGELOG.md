@@ -26,6 +26,9 @@ All notable changes to MD Sticky Notes will be documented in this file.
   crossing displays (including negative origins and mixed 1x/2x scaling) no
   longer re-anchors or jumps; AppKit's frame constraint is disabled for note
   panels (restore clamps instead)
+- Startup preview renders Markdown with the editor's type scale (headings,
+  lists, code, quotes, inline styles) instead of raw source, so unfocused notes
+  no longer look smaller than they do once clicked
 
 ### Open Markdown files from Finder (fork)
 

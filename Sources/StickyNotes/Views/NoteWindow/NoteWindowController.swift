@@ -362,15 +362,26 @@ class NoteWindowController: NSWindowController, NSWindowDelegate {
         scrollView.drawsBackground = false
         scrollView.hasVerticalScroller = false
 
-        let textView = NSTextView()
+        let contentSize = scrollView.contentView.bounds.size
+        let textView = NSTextView(frame: NSRect(origin: .zero, size: contentSize))
         textView.isEditable = false
         textView.isSelectable = false
         textView.drawsBackground = false
         textView.textContainerInset = NSSize(width: 12, height: 32)
-        textView.font = NSFont.systemFont(ofSize: 14)
-        textView.textColor = NSColor(white: 0.1, alpha: 0.75)
-        textView.string = content
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width]
+        textView.minSize = NSSize(width: 0, height: 0)
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         textView.textContainer?.lineFragmentPadding = 4
+        textView.textContainer?.widthTracksTextView = true
+        textView.textContainer?.containerSize = NSSize(
+            width: contentSize.width,
+            height: CGFloat.greatestFiniteMagnitude
+        )
+        // Style the preview like the live editor: raw markdown would show
+        // headings at body size until the shared WebView attaches.
+        textView.textStorage?.setAttributedString(MarkdownPreview.attributedString(for: content))
 
         scrollView.documentView = textView
         contentContainer.addSubview(scrollView)

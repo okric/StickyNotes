@@ -155,6 +155,7 @@ Sources/StickyNotes/Views/SettingsView.swift             # Settings 창 (Cmd+,)
 42. **`attachWebView` isReady 가드**: 에디터가 `markReady()` 전에 다른 윈도우로 전환되면 `serializeState()`가 빈 에디터 상태(`""`)를 직렬화하여 기존 콘텐츠 삭제. `manager.isReady` 체크로 방어 — false면 직렬화/스냅샷 건너뛰고 text preview 표시
 43. **`cacheSerializedState` 전체 상태 저장**: `serializeState()` JSON에는 `{doc, anchor, head, scrollTop}` 포함. 기존에는 `doc`만 추출하여 NoteManager에 저장 → 앱 재시작 시 cursor/scroll 소실. `anchor` → `updateNoteCursorPosition`, `scrollTop` → `updateNoteScrollTop` 추가로 영속화. `switchToNote`의 중복 코드도 `cacheSerializedState` 재사용으로 정리
 44. **멀티 모니터 (음수 원점 + 1x/2x 혼합)**: `NSWindow.init(contentRect:)`는 보조 디스플레이에 완전히 놓인 rect를 메인 스크린으로 clamp한다(실측: x=-2500 → 860). 생성 직후 `panel.setFrameOrigin(저장된 위치)`로 재적용해야 한다. 저장은 `screenUUID`(CGDisplayCreateUUIDFromDisplayID) + 화면 원점 기준 `screenOffset`; 복원 시 UUID로 화면을 찾고 없으면 겹침/클램프. 창 이동은 titlebar overlay에서 `NSEvent.mouseLocation` 전역 델타로 직접 처리(AppKit drag loop은 디스플레이 경계에서 re-anchor할 수 있음). `NotePanel.constrainFrameRect`는 제안된 프레임을 그대로 반환 — 기본 constrain은 화면 밖 프레임을 메인으로 끌어와 "점프"처럼 보인다
+45. **시작 화면 미리보기 (MarkdownPreview)**: 공유 WKWebView가 붙기 전에는 plain NSTextView로 내용을 보여준다. raw markdown을 그대로 넣으면 헤딩이 14pt로 보여 "작게 렌더링"된 것처럼 보이므로 `AttributedString(markdown:options: .init(interpretedSyntax: .full))`로 파싱해 에디터 타입 스케일(1.8em/1.5em/…, bold, mono code, bullet)로 스타일링한다. 주의: full 파싱은 **블록 구분 개행을 characters에서 제거**하므로 `presentationIntent.components.first.identity`(블록마다 고유)가 바뀔 때 "\n"을 직접 넣어야 한다. 코드블록 내부 개행은 유지됨
 
 ## Lezer Markdown Node Names
 

@@ -17,6 +17,7 @@
 		637484C42C4A7064C4266113 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = D319DC00F39B7144CBE620E9 /* AppIcon.icns */; };
 		64BD8802AE918E4D1AF55459 /* LegacyImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84F4326241D64F5ECD08A675 /* LegacyImporter.swift */; };
 		6CDC78B2AD65AD1D51927FCE /* AppCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2C9AF8C1F7411AD0875E92 /* AppCoordinator.swift */; };
+		7F2FC897E8F96EF6EA472069 /* MarkdownPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F952AC76D06B912B2930492 /* MarkdownPreview.swift */; };
 		7FD53CDB722D5F3B4AC52D22 /* NoteManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B886F33B3197717C78165B58 /* NoteManager.swift */; };
 		8E93750A5B1CFAD30D61EA3D /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDE69F17D9D7F72F804363A8 /* AppSettings.swift */; };
 		90D47C5608DB53CC72FB1C61 /* NoteColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8AD4975D97DF61425F1AE67 /* NoteColor.swift */; };
@@ -28,6 +29,7 @@
 /* Begin PBXFileReference section */
 		08E57697F91300C2C17BD66D /* NoteWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteWindowController.swift; sourceTree = "<group>"; };
 		1ECDAF6CAE73FDF8225DAC57 /* WindowManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowManager.swift; sourceTree = "<group>"; };
+		3F952AC76D06B912B2930492 /* MarkdownPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownPreview.swift; sourceTree = "<group>"; };
 		48F7FAD50DF90DD24DBFF35A /* StickyNotes.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = StickyNotes.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		59EABCDC2DBA29584AC0D43A /* Editor */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Editor; path = Sources/StickyNotes/Resources/Editor; sourceTree = SOURCE_ROOT; };
 		5B6847C8D89327E832A14951 /* ScreenGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenGeometry.swift; sourceTree = "<group>"; };
@@ -130,6 +132,7 @@
 		F4F6C8786B24AA7FCDBAABDF /* NoteWindow */ = {
 			isa = PBXGroup;
 			children = (
+				3F952AC76D06B912B2930492 /* MarkdownPreview.swift */,
 				08E57697F91300C2C17BD66D /* NoteWindowController.swift */,
 			);
 			path = NoteWindow;
@@ -242,6 +245,7 @@
 				6CDC78B2AD65AD1D51927FCE /* AppCoordinator.swift in Sources */,
 				8E93750A5B1CFAD30D61EA3D /* AppSettings.swift in Sources */,
 				64BD8802AE918E4D1AF55459 /* LegacyImporter.swift in Sources */,
+				7F2FC897E8F96EF6EA472069 /* MarkdownPreview.swift in Sources */,
 				1C46CDDB22B4ED981F589AD2 /* Note.swift in Sources */,
 				90D47C5608DB53CC72FB1C61 /* NoteColor.swift in Sources */,
 				7FD53CDB722D5F3B4AC52D22 /* NoteManager.swift in Sources */,
