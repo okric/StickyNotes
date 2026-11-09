@@ -58,7 +58,7 @@ struct SettingsView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             Text("""
-            Remote notes are read-only until a token with the `notes` scope is             saved here. Tokens are stored in the macOS Keychain, never in the app's             settings files. Create one on the server with:
+            Remote notes are read-only until a token with the `notes` scope is saved here. Tokens are stored in the macOS Keychain, never in the app's settings files. Create one on the server with:
 
             docker compose exec notes-api node scripts/add-token.ts "mac sticky" --scope notes
             """)
