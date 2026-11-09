@@ -96,6 +96,11 @@ struct MenuBarCommands: Scene {
                 }
                 .keyboardShortcut("n", modifiers: .command)
 
+                Button("Open…") {
+                    coordinator.promptOpenFiles()
+                }
+                .keyboardShortcut("o", modifiers: .command)
+
                 Divider()
 
                 Button("Show All Notes") {

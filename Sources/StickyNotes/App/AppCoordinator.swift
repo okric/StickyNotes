@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import Combine
+import UniformTypeIdentifiers
 
 /// Main coordinator that manages the application state and components
 class AppCoordinator: ObservableObject {
@@ -63,6 +64,22 @@ class AppCoordinator: ObservableObject {
         }
         // User explicitly closed — drop it from the index, keep the file
         noteManager.deleteNote(noteId)
+    }
+
+    /// Show the standard Open panel and open the chosen Markdown files.
+    func promptOpenFiles() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = true
+        panel.resolvesAliases = true
+        panel.allowedContentTypes = [UTType(importedAs: "net.daringfireball.markdown")]
+        panel.message = "Choose Markdown files to open as sticky notes"
+        panel.prompt = "Open"
+
+        NSApp.activate(ignoringOtherApps: true)
+        guard panel.runModal() == .OK else { return }
+        openFiles(panel.urls)
     }
 
     /// Open Markdown files handed over by Launch Services (Finder "Open With",

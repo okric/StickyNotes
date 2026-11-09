@@ -17,6 +17,7 @@ All notable changes to MD Sticky Notes will be documented in this file.
 
 ### Open Markdown files from Finder (fork)
 
+- **File > Open… (Cmd+O)** picks one or more Markdown files anywhere on disk
 - The app registers as an alternate handler for Markdown (`net.daringfireball.markdown`:
   `.md`, `.markdown`, `.mdown`, `.mkdn`, `.mkd`, `.mdwn`), so "Open With >
   Sticky Notes" and `open -a StickyNotes note.md` work
