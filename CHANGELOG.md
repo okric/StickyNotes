@@ -46,6 +46,10 @@ All notable changes to MD Sticky Notes will be documented in this file.
 - Filename collisions follow the usual ` 2` suffix rule; the server body is
   saved as-is (it has no frontmatter)
 - The Notes server URL is now remembered in Settings, next to the Keychain token
+- The inbox also polls every minute in the background: imports land silently,
+  the stack refreshes without taking focus, and failures only go to the console
+- An activity assertion keeps App Nap from stretching the interval when the app
+  sits in the background; the Mac can still sleep normally
 
 ## [1.3.2] - 2026-11-08
 

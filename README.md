@@ -40,7 +40,7 @@ A native macOS sticky note app with Obsidian-style markdown live preview, built 
 - **Live folder sync**: files added, deleted or edited in the notes folder update the stickies without a relaunch (an open note keeps your text if you have unsaved keystrokes)
 - **Close moves to Trash**: closing a sticky moves its `.md` to the Trash, where you can restore it
 - **Remote Notes**: File > Open Note URL… (Cmd+Shift+O) opens a shared Notes link (`…/n/<id>`) as a sticky; add a `notes`-scope token in Settings to edit it (read-only without one)
-- **Notes Inbox**: File > Fetch Notes Inbox… (Cmd+Shift+I) pulls every note from the Notes server into the notes folder, joins the default stack, and deletes the server copy only after the file and index entry are saved
+- **Notes Inbox**: File > Fetch Notes Inbox… (Cmd+Shift+I) pulls every note from the Notes server into the notes folder, joins the default stack, and deletes the server copy only after the file and index entry are saved; the same pass also runs automatically every minute
 - **Fonts**: pick the note body and filename fonts in Settings; sizes stay fixed
 - **Notes Folder Settings**: pick any folder, or create `~/Documents/Sticky Notes` (Cmd+,)
 

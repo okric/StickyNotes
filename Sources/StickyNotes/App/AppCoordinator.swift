@@ -37,6 +37,14 @@ class AppCoordinator: ObservableObject {
     /// Watches the notes folder for files added, edited or deleted outside the app.
     private var folderMonitor: NotesFolderMonitor?
 
+    /// Polls the Notes server for inbox notes. Manual passes report; the timer
+    /// stays silent so an empty inbox never pops an alert.
+    private var inboxTimer: Timer?
+    private let inboxPollInterval: TimeInterval = 60
+    /// Keeps macOS App Nap from coalescing (or suspending) the inbox timer while
+    /// the app sits in the background. Allows the system to sleep normally.
+    private var inboxActivity: NSObjectProtocol?
+
     // MARK: - Initialization
 
     init() {
@@ -55,6 +63,7 @@ class AppCoordinator: ObservableObject {
         openInitialWindows()
         startFolderMonitor()
         startRemotePolling()
+        startInboxPolling()
 
         NotificationCenter.default.addObserver(
             forName: .remoteTokenChanged,
@@ -68,6 +77,8 @@ class AppCoordinator: ObservableObject {
     deinit {
         remotePollTimer?.invalidate()
         remoteSaveTimers.values.forEach { $0.invalidate() }
+        inboxTimer?.invalidate()
+        if let inboxActivity { ProcessInfo.processInfo.endActivity(inboxActivity) }
         folderMonitor?.stop()
     }
 
@@ -390,21 +401,28 @@ class AppCoordinator: ObservableObject {
     // MARK: - Notes inbox
 
     /// Pull every note from the Notes API into the notes folder and the default
-    /// stack, then delete the server copies (File > Fetch Notes Inbox).
+    /// stack, then delete the server copies (File > Fetch Notes Inbox). Also
+    /// runs automatically every minute without alerts.
     func fetchNotesInbox() {
+        fetchNotesInbox(interactive: true)
+    }
+
+    private func fetchNotesInbox(interactive: Bool) {
         guard !isFetchingInbox else { return }
         guard let folder = settings.defaultFolderURL else {
-            presentInboxError("Choose a notes folder in Settings first.")
+            if interactive { presentInboxError("Choose a notes folder in Settings first.") }
             return
         }
 
         let baseString = RemoteCredentials.normalize(settings.notesServerURLString)
         guard let base = URL(string: baseString), base.scheme != nil, base.host != nil else {
-            presentInboxError("Set a Notes server URL in Settings.")
+            if interactive { presentInboxError("Set a Notes server URL in Settings.") }
             return
         }
         guard let token = RemoteCredentials.token(for: baseString) else {
-            presentInboxError("No token stored for \(baseString). Add one in Settings.")
+            if interactive {
+                presentInboxError("No token stored for \(baseString). Add one in Settings.")
+            }
             return
         }
 
@@ -414,7 +432,11 @@ class AppCoordinator: ObservableObject {
             switch result {
             case .failure(let error):
                 self.isFetchingInbox = false
-                self.presentInboxError(error.localizedDescription)
+                if interactive {
+                    self.presentInboxError(error.localizedDescription)
+                } else {
+                    print("[AppCoordinator] Inbox poll failed: \(error.localizedDescription)")
+                }
 
             case .success(let remoteNotes):
                 let stackPosition = self.noteManager.stack?.position
@@ -433,13 +455,35 @@ class AppCoordinator: ObservableObject {
                     if outcome.imported > 0 {
                         self.syncStackWindow()
                         self.windowManager.stackWindowController?.refreshFromModel()
-                        self.windowManager.stackWindowController?.window?
-                            .makeKeyAndOrderFront(nil)
+                        if interactive {
+                            self.windowManager.stackWindowController?.window?
+                                .makeKeyAndOrderFront(nil)
+                        }
                     }
-                    self.presentInboxOutcome(outcome)
+                    if interactive {
+                        self.presentInboxOutcome(outcome)
+                    }
                 }
             }
         }
+    }
+
+    private func startInboxPolling() {
+        inboxTimer?.invalidate()
+        if inboxActivity == nil {
+            inboxActivity = ProcessInfo.processInfo.beginActivity(
+                options: [.userInitiatedAllowingIdleSystemSleep],
+                reason: "Poll the Notes inbox"
+            )
+        }
+        let timer = Timer.scheduledTimer(
+            withTimeInterval: inboxPollInterval,
+            repeats: true
+        ) { [weak self] _ in
+            self?.fetchNotesInbox(interactive: false)
+        }
+        timer.tolerance = 5
+        inboxTimer = timer
     }
 
     private func presentInboxOutcome(_ outcome: NotesInboxImporter.Outcome) {
