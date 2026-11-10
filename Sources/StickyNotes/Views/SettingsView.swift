@@ -118,6 +118,7 @@ struct SettingsView: View {
                 get: { launchAtLogin.isEnabled },
                 set: { launchAtLogin.setEnabled($0) }
             ))
+            .toggleStyle(.switch)
             .disabled(launchAtLogin.isChanging || !LaunchAtLogin.isSupported)
 
             if launchAtLogin.isChanging {
