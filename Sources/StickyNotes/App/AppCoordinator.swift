@@ -603,6 +603,9 @@ class AppCoordinator: ObservableObject {
 
     /// Change appearance. Member notes take it from the stack, not themselves.
     func changeNoteColor(noteId: UUID, colorTheme: String) {
+        if let chosen = NoteColor(rawValue: colorTheme) {
+            settings.setLastNoteColor(chosen)
+        }
         if noteManager.getNote(noteId)?.isStacked == true {
             noteManager.updateStackAppearance(colorTheme: colorTheme)
             windowManager.stackWindowController?.applyColorTheme(colorTheme)

@@ -18,6 +18,7 @@ final class NotesStore {
         var titleFontFamily: String?
         var notesServerURL: String?
         var inboxPollMinutes: Int?
+        var lastNoteColor: String?
 
         init(
             defaultFolderPath: String? = nil,
@@ -25,7 +26,8 @@ final class NotesStore {
             noteFontFamily: String? = nil,
             titleFontFamily: String? = nil,
             notesServerURL: String? = nil,
-            inboxPollMinutes: Int? = nil
+            inboxPollMinutes: Int? = nil,
+            lastNoteColor: String? = nil
         ) {
             self.defaultFolderPath = defaultFolderPath
             self.didMigrateLegacyNotes = didMigrateLegacyNotes
@@ -33,6 +35,7 @@ final class NotesStore {
             self.titleFontFamily = titleFontFamily
             self.notesServerURL = notesServerURL
             self.inboxPollMinutes = inboxPollMinutes
+            self.lastNoteColor = lastNoteColor
         }
     }
 

@@ -454,14 +454,13 @@ class NoteManager: ObservableObject {
             Self.isInside(url, $0.standardizedFileURL)
         } ?? false
 
-        let colors = NoteColor.allCases
         var note = Note(
             path: url.path,
             title: url.deletingPathExtension().lastPathComponent,
             stackID: joinsStack ? NoteStack.defaultID : nil,
             content: content,
             position: position,
-            colorTheme: colors[notes.count % colors.count].rawValue
+            colorTheme: newNoteColorTheme
         )
         if joinsStack {
             let stack = ensureStack(
@@ -515,7 +514,6 @@ class NoteManager: ObservableObject {
             return notes[index]
         }
 
-        let colors = NoteColor.allCases
         let note = Note(
             sourceKind: .remoteURL,
             path: link.pageURL.absoluteString,
@@ -526,7 +524,7 @@ class NoteManager: ObservableObject {
             remoteNoteID: remoteNoteID,
             remoteShareID: link.shareID,
             remoteRevision: revision,
-            colorTheme: colors[notes.count % colors.count].rawValue
+            colorTheme: newNoteColorTheme
         )
         notes.append(note)
         try? store.writeRemoteContent(content, for: note)
@@ -555,6 +553,12 @@ class NoteManager: ObservableObject {
     /// Remote notes that are currently open (the index only holds open notes).
     var remoteNotes: [Note] {
         notes.filter { $0.isRemote }
+    }
+
+    /// Theme for a note created now: the last color the user picked, or yellow
+    /// on a fresh install. Stacked notes still take the stack's own color.
+    var newNoteColorTheme: String {
+        settings.newNoteColor.rawValue
     }
 
     /// What a pass over the notes folder changed on disk.
@@ -605,14 +609,13 @@ class NoteManager: ObservableObject {
                 print("[NoteManager] Skipped unreadable file: \(url.path)")
                 continue
             }
-            let colors = NoteColor.allCases
             added.append(Note(
                 path: url.path,
                 title: url.deletingPathExtension().lastPathComponent,
                 stackID: NoteStack.defaultID,
                 content: content,
                 position: stackPosition,
-                colorTheme: colors[(notes.count + added.count) % colors.count].rawValue
+                colorTheme: newNoteColorTheme
             ))
         }
 
@@ -709,7 +712,6 @@ class NoteManager: ObservableObject {
                 baseTitle: baseTitle ?? NotesStore.defaultTitle(),
                 content: content
             )
-            let colors = NoteColor.allCases
             // Cmd+N places a note on its own. Only files that appear in the
             // folder from outside join the default stack automatically.
             let note = Note(
@@ -717,7 +719,7 @@ class NoteManager: ObservableObject {
                 title: url.deletingPathExtension().lastPathComponent,
                 content: content,
                 position: position,
-                colorTheme: colors[notes.count % colors.count].rawValue
+                colorTheme: newNoteColorTheme
             )
             notes.append(note)
             store.saveIndex(notes)

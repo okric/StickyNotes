@@ -10,6 +10,10 @@ All notable changes to MD Sticky Notes will be documented in this file.
   caret sitting exactly on a formula boundary no longer counts as editing it
   (a caret strictly inside still unfolds the source, and range selections
   behave as before)
+- Clicking the stack no longer repaints the titlebar strip with the front
+  sheet's own color; the stack color is applied whenever it takes the editor
+- New notes start yellow on a fresh install, then reuse the last color the
+  user picked for a note or stack instead of cycling through all six colors
 
 ### Note stacks
 

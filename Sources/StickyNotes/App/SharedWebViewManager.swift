@@ -251,6 +251,19 @@ class SharedWebViewManager {
         )
     }
 
+    /// Repaint the HTML titlebar strip. `loadNoteContent` colors it from the
+    /// note, but a stack owns its color: without this the strip keeps the front
+    /// sheet's own color until the next sheet change.
+    func setNoteColor(_ theme: String) {
+        webView.callAsyncJavaScript(
+            "window.setNoteColor(colorTheme)",
+            arguments: ["colorTheme": theme],
+            in: nil,
+            in: .page,
+            completionHandler: nil
+        )
+    }
+
     /// Serialize the active note and leave a snapshot/preview in the window the
     /// WebView is about to leave. Call before reparenting the WebView.
     ///

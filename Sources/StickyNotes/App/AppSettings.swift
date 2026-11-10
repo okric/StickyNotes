@@ -22,6 +22,10 @@ final class AppSettings: ObservableObject {
     /// How often the background inbox pass runs, in minutes.
     @Published private(set) var inboxPollMinutes: Int
 
+    /// Theme picked for the last note or stack; new notes reuse it. `nil` on a
+    /// fresh install, which means the first color (yellow).
+    @Published private(set) var lastNoteColor: String?
+
     static let defaultNotesServerURL = ""
     static let inboxPollChoices = [1, 5, 15, 30]
 
@@ -37,6 +41,12 @@ final class AppSettings: ObservableObject {
         self.notesServerURL = data.notesServerURL
         let storedMinutes = data.inboxPollMinutes ?? 1
         self.inboxPollMinutes = Self.inboxPollChoices.contains(storedMinutes) ? storedMinutes : 1
+        self.lastNoteColor = data.lastNoteColor
+    }
+
+    /// Color for a note created now: the last one the user picked, or yellow.
+    var newNoteColor: NoteColor {
+        lastNoteColor.flatMap(NoteColor.init(rawValue:)) ?? NoteColor.allCases.first ?? .yellow
     }
 
     /// Configured server origin; empty until set in Settings.
@@ -136,6 +146,13 @@ final class AppSettings: ObservableObject {
         persist()
     }
 
+    /// Remember the color of the note or stack the user just recolored.
+    func setLastNoteColor(_ color: NoteColor) {
+        guard lastNoteColor != color.rawValue else { return }
+        lastNoteColor = color.rawValue
+        persist()
+    }
+
     func markLegacyMigrationDone() {
         didMigrateLegacyNotes = true
         persist()
@@ -149,7 +166,8 @@ final class AppSettings: ObservableObject {
                 noteFontFamily: noteFontFamily,
                 titleFontFamily: titleFontFamily,
                 notesServerURL: notesServerURL,
-                inboxPollMinutes: inboxPollMinutes
+                inboxPollMinutes: inboxPollMinutes,
+                lastNoteColor: lastNoteColor
             )
         )
     }

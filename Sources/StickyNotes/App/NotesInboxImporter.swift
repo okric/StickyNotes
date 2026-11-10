@@ -38,7 +38,6 @@ enum NotesInboxImporter {
     ) {
         var created: [Note] = []
         var pendingDeletes: [RemoteNote] = []
-        let colors = NoteColor.allCases
 
         for remote in remoteNotes {
             let alreadyImported = noteManager.notes.contains {
@@ -60,7 +59,7 @@ enum NotesInboxImporter {
                     stackID: NoteStack.defaultID,
                     content: remote.body,
                     position: stackPosition,
-                    colorTheme: colors[(noteManager.notes.count + created.count) % colors.count].rawValue,
+                    colorTheme: noteManager.newNoteColorTheme,
                     createdAt: createdDate,
                     modifiedAt: modifiedDate
                 )

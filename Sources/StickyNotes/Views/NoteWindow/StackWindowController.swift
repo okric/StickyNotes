@@ -505,6 +505,7 @@ final class StackWindowController: NSWindowController, NSWindowDelegate, WebView
     @objc private func colorDotClicked(_ sender: NSButton) {
         guard let color = colorButtons.first(where: { $0.value === sender })?.key else { return }
         stack.colorTheme = color.rawValue
+        coordinator?.settings.setLastNoteColor(color)
         coordinator?.noteManager.updateStackAppearance(colorTheme: color.rawValue)
         for (theme, button) in colorButtons {
             let selected = theme == color
@@ -626,6 +627,7 @@ final class StackWindowController: NSWindowController, NSWindowDelegate, WebView
         manager.setActiveHost(self)
 
         manager.switchToNoteSkippingSerialization(frontNote.id, note: frontNote)
+        manager.setNoteColor(stackColorTheme)
 
         if manager.isReady {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
