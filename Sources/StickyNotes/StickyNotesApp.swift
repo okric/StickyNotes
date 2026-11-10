@@ -24,6 +24,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         didFinishLaunching = true
+        guard coordinator.ensureNotesFolderOnFirstLaunch() else { return }
         // Opening a file counts as user intent; don't steal focus back to the
         // last active note afterwards.
         if !drainPendingOpenURLs() {

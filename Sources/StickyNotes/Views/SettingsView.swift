@@ -30,8 +30,10 @@ struct SettingsView: View {
 
             HStack(spacing: 8) {
                 Button("Choose Folder…") { chooseFolder() }
-                Button("Create Folder in Documents") {
-                    settings.createDefaultFolderInDocuments()
+                if !settings.documentsNotesFolderExists {
+                    Button("Create Folder in Documents") {
+                        settings.createDefaultFolderInDocuments()
+                    }
                 }
                 Spacer()
                 Button("Reveal in Finder") {

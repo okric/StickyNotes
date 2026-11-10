@@ -54,6 +54,11 @@ All notable changes to MD Sticky Notes will be documented in this file.
 - A stored token is shown as a read-only status line with a Clear button; the
   input field only appears when no token exists for the server
 - Settings → Startup adds Launch at login through `SMAppService` (macOS 13+)
+- First launch now asks for a notes folder instead of silently creating
+  `~/Documents/Sticky Notes`; quitting the prompt quits the app, and no note is
+  created before the choice
+- Settings hides "Create Folder in Documents" while `~/Documents/Sticky Notes`
+  already exists
 
 ## [1.3.2] - 2026-11-08
 

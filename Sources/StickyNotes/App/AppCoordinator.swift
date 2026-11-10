@@ -90,6 +90,50 @@ class AppCoordinator: ObservableObject {
 
     // MARK: - Public Methods
 
+    /// First launch only. A notes folder is not optional, so ask for one before
+    /// any note is created; Quit is the only way out. After a folder is chosen,
+    /// load the index again (migration/welcome note) and show what is there.
+    /// - Returns: `false` when the user quit instead of choosing.
+    @discardableResult
+    func ensureNotesFolderOnFirstLaunch() -> Bool {
+        guard settings.defaultFolderURL == nil else { return true }
+        NSApp.activate(ignoringOtherApps: true)
+
+        while settings.defaultFolderURL == nil {
+            let alert = NSAlert()
+            alert.messageText = "Choose a notes folder"
+            alert.informativeText = """
+            Every sticky note is a Markdown file. Pick the folder that should \
+            hold them — an existing folder, an Obsidian vault, or a new one. \
+            You can change it later in Settings.
+            """
+            alert.addButton(withTitle: "Choose Folder…")
+            alert.addButton(withTitle: "Quit")
+
+            guard alert.runModal() == .alertFirstButtonReturn else {
+                NSApp.terminate(nil)
+                return false
+            }
+
+            let panel = NSOpenPanel()
+            panel.canChooseFiles = false
+            panel.canChooseDirectories = true
+            panel.canCreateDirectories = true
+            panel.allowsMultipleSelection = false
+            panel.prompt = "Use Folder"
+            panel.message = "Choose the folder where your notes will be saved"
+
+            if panel.runModal() == .OK, let url = panel.url {
+                settings.setDefaultFolder(url)
+            }
+        }
+
+        noteManager.loadNotes()
+        syncNotesFolder()
+        showAllNotes()
+        return true
+    }
+
     /// Create a new note on its own window. Cmd+N is a placed note; files that
     /// appear in the notes folder from outside still join the stack.
     func createNewNote() {

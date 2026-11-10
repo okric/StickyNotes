@@ -65,7 +65,7 @@ class NoteManager: ObservableObject {
         guard notes.isEmpty else { return }
 
         if !settings.didMigrateLegacyNotes {
-            if let folder = settings.ensureDefaultFolder() {
+            if let folder = settings.defaultFolderURL {
                 let migrated = LegacyImporter.migrate(store: store, into: folder)
                 settings.markLegacyMigrationDone()
                 if !migrated.isEmpty {
@@ -73,16 +73,19 @@ class NoteManager: ObservableObject {
                     store.saveIndex(notes)
                     return
                 }
-            } else {
-                settings.markLegacyMigrationDone()
             }
+            // No folder yet: leave the flag alone; the first-launch prompt
+            // chooses one and this runs again after that.
         }
 
         // Markdown files already in the folder become stickies at launch (see
         // AppCoordinator.importNotesFromNotesFolder). Don't drop a welcome note
         // next to them.
-        if let folder = settings.defaultFolderURL,
-           !markdownFiles(in: folder).isEmpty {
+        guard let folder = settings.defaultFolderURL else {
+            // First launch: AppCoordinator asks for a folder, then loads again.
+            return
+        }
+        if !markdownFiles(in: folder).isEmpty {
             return
         }
 

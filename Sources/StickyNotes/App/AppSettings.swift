@@ -49,6 +49,20 @@ final class AppSettings: ObservableObject {
         return URL(fileURLWithPath: defaultFolderPath, isDirectory: true)
     }
 
+    /// `~/Documents/Sticky Notes` (whether or not it exists).
+    var documentsNotesFolderURL: URL? {
+        guard let documents = FileManager.default.urls(
+            for: .documentDirectory, in: .userDomainMask
+        ).first else { return nil }
+        return documents.appendingPathComponent(NotesStore.defaultFolderName, isDirectory: true)
+    }
+
+    /// The Documents shortcut is only offered while that folder is missing.
+    var documentsNotesFolderExists: Bool {
+        guard let url = documentsNotesFolderURL else { return false }
+        return FileManager.default.fileExists(atPath: url.path)
+    }
+
     /// Sets the folder used for new notes. Does not move existing files.
     func setDefaultFolder(_ url: URL) {
         defaultFolderPath = url.standardizedFileURL.path
@@ -58,13 +72,10 @@ final class AppSettings: ObservableObject {
     /// Creates `~/Documents/Sticky Notes` (if needed) and makes it the default.
     @discardableResult
     func createDefaultFolderInDocuments() -> URL? {
-        guard let documents = FileManager.default.urls(
-            for: .documentDirectory, in: .userDomainMask
-        ).first else {
+        guard let folder = documentsNotesFolderURL else {
             print("[AppSettings] No Documents directory available")
             return nil
         }
-        let folder = documents.appendingPathComponent(NotesStore.defaultFolderName, isDirectory: true)
         do {
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             setDefaultFolder(folder)
@@ -75,21 +86,21 @@ final class AppSettings: ObservableObject {
         }
     }
 
-    /// Folder for new notes: the configured one, or Documents/Sticky Notes.
-    /// Recreates the configured folder if it was deleted.
+    /// Folder for new notes. Recreates a configured folder that was deleted;
+    /// returns nil when no folder has been chosen yet (the first-launch prompt
+    /// owns that case).
     func ensureDefaultFolder() -> URL? {
-        if let url = defaultFolderURL {
-            if FileManager.default.fileExists(atPath: url.path) {
-                return url
-            }
-            do {
-                try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-                return url
-            } catch {
-                print("[AppSettings] Configured folder missing and could not be recreated: \(error)")
-            }
+        guard let url = defaultFolderURL else { return nil }
+        if FileManager.default.fileExists(atPath: url.path) {
+            return url
         }
-        return createDefaultFolderInDocuments()
+        do {
+            try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+            return url
+        } catch {
+            print("[AppSettings] Configured folder missing and could not be recreated: \(error)")
+            return nil
+        }
     }
 
     func revealDefaultFolder() {
