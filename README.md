@@ -21,6 +21,12 @@ A native macOS sticky note app with Obsidian-style markdown live preview, built 
 
 ### Sticky Note Experience
 - **Plain Markdown files**: every note is a `.md` file in a folder you choose (Obsidian vaults work)
+- **Note stacks**: notes added to the notes folder pile into the default stack — one window with the front sheet on top, the sheets underneath showing at its edge
+  - Hover the stack for the chevrons: they cycle the front sheet in creation order
+  - Hold ⌥ and drag the stack to pull the front note out into a normal window
+  - Put a placed note back by dragging it onto the stack, or use File > Move Note to Stack
+  - The stack keeps its own size while switching sheets; closing it trashes the front note and reveals the next
+  - Stack membership is metadata only; the `.md` file is identical to any other note
 - **Floating Windows**: Always visible while you work
 - **Multi-Display**: notes remember their monitor and position across reused and resized displays
 - **Pin on Top**: Keep important notes above all windows (Cmd+Shift+P)
@@ -106,12 +112,15 @@ Notes are **not** kept in a database or `UserDefaults`:
 └── Note 2026-11-08 143012.md
 
 ~/Library/Application Support/com.mdstickynotes/
-├── index.json                     # per-note metadata: path, window frame, color, cursor
+├── index.json                     # per-note metadata: path, window frame, color, cursor, stack membership
+├── stack.json                     # default stack position and front sheet
 ├── settings.json                  # chosen notes folder, migration flag
 └── remote/                        # cached bodies of Notes API notes (read-only)
 ```
 
 - The index stores only presentation metadata — never note bodies.
+- Stack membership is an index field (`stackID`); the Markdown file has no stack
+  marker and opens the same way whether it is in the stack or on its own.
 - Edits are written to the `.md` file after a 500 ms debounce, atomically.
 - Closing a note window moves its Markdown file to the **Trash**; restore it
   from there. Remote notes are only unlinked. Any top-level `.md` file in the

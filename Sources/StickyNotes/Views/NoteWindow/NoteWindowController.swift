@@ -5,7 +5,7 @@ import WebKit
 /// Window controller for a single note window.
 /// Uses a shared WKWebView that gets reparented to the active (key) window.
 /// Inactive windows show a snapshot image of their last editor state.
-class NoteWindowController: NSWindowController, NSWindowDelegate {
+class NoteWindowController: NSWindowController, NSWindowDelegate, WebViewHost {
     // MARK: - Properties
 
     private var note: Note
@@ -18,7 +18,11 @@ class NoteWindowController: NSWindowController, NSWindowDelegate {
     private var contentContainer: NSView!
 
     /// Whether the shared WKWebView is currently attached to this window
-    private(set) var hasWebView = false
+    var hasWebView = false
+
+    /// Set when the note is moving into the stack: closing this window must not
+    /// delete the note or move its file to the Trash.
+    var suppressCloseDeletion = false
 
     /// Cached snapshot of the last rendered editor state (shown when WebView moves to another window)
     private var snapshotView: NSImageView?
@@ -215,6 +219,12 @@ class NoteWindowController: NSWindowController, NSWindowDelegate {
             frame: NSRect(x: 0, y: contentRect.height - 28, width: contentRect.width, height: 28)
         )
         titlebarOverlay.autoresizingMask = [.width, .minYMargin]
+        titlebarOverlay.onDragMoved = { [weak self] frame in
+            self?.titlebarDragMoved(to: frame)
+        }
+        titlebarOverlay.onDragEnded = { [weak self] frame in
+            self?.titlebarDragEnded(at: frame)
+        }
         container.addSubview(titlebarOverlay)
 
         panel.contentView = container
@@ -233,75 +243,10 @@ class NoteWindowController: NSWindowController, NSWindowDelegate {
         let manager = SharedWebViewManager.shared
         let wv = manager.webView
 
-        let oldWC: NoteWindowController? = {
-            guard let id = manager.activeNoteId, id != note.id else { return nil }
-            return coordinator?.windowManager.getWindowController(for: id)
-        }()
-        let oldHadWebView = oldWC?.hasWebView ?? false
-
         guard let currentNote = coordinator?.noteManager.getNote(note.id) else { return }
 
-        // 1. Synchronous snapshot of old content (WebView still in old window)
-        if oldHadWebView {
-            oldWC?.hasWebView = false
-
-            if manager.isReady {
-                // A. Serialize state first (preserves cursor position before we reset it)
-                var serializedState: String?
-                var serializeDone = false
-                wv.evaluateJavaScript("window.serializeState()") { result, _ in
-                    serializedState = result as? String
-                    serializeDone = true
-                }
-                let serializeDeadline = Date().addingTimeInterval(0.1)
-                while !serializeDone && Date() < serializeDeadline {
-                    RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
-                }
-                if let json = serializedState, let oldId = manager.activeNoteId {
-                    manager.cacheSerializedState(json, for: oldId)
-                }
-
-                // B. Collapse all cursor unfolds, disable transitions, and blur
-                var prepareDone = false
-                wv.evaluateJavaScript("window.prepareForSnapshot()") { _, _ in
-                    prepareDone = true
-                }
-                let prepareDeadline = Date().addingTimeInterval(0.1)
-                while !prepareDone && Date() < prepareDeadline {
-                    RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
-                }
-
-                // C. Wait for compositor (transitions disabled, just need one paint cycle)
-                let renderDeadline = Date().addingTimeInterval(0.05)
-                while Date() < renderDeadline {
-                    RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
-                }
-
-                // D. Take snapshot
-                var snapshot: NSImage?
-                var done = false
-                wv.takeSnapshot(with: WKSnapshotConfiguration()) { image, _ in
-                    snapshot = image
-                    done = true
-                }
-                let deadline = Date().addingTimeInterval(0.1)
-                while !done && Date() < deadline {
-                    RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
-                }
-
-                // E. Re-enable transitions
-                wv.evaluateJavaScript("window.endSnapshotMode()")
-
-                if let image = snapshot {
-                    oldWC?.showSnapshot(image)
-                } else {
-                    oldWC?.showTextPreview()
-                }
-            } else {
-                // Editor not ready yet — show text preview (don't serialize empty editor state)
-                oldWC?.showTextPreview()
-            }
-        }
+        // 1. Serialize + snapshot whichever window currently owns the WebView.
+        manager.snapshotActiveHostBeforeMove()
 
         // 2. Move WebView to this window (hidden behind existing preview)
         wv.alphaValue = 0
@@ -309,8 +254,9 @@ class NoteWindowController: NSWindowController, NSWindowDelegate {
         wv.autoresizingMask = [.width, .height]
         contentContainer.addSubview(wv)
         hasWebView = true
+        manager.setActiveHost(self)
 
-        // 3. Switch editor to this note's content (skip serialization — already cached above)
+        // 3. Switch editor to this note's content (state already cached above)
         manager.switchToNoteSkippingSerialization(note.id, note: currentNote)
 
         // 4. Reveal after content renders (skip if editor not ready — markReady handles reveal)
@@ -327,6 +273,9 @@ class NoteWindowController: NSWindowController, NSWindowDelegate {
     func revealWebView() {
         guard hasWebView else { return }
         let wv = SharedWebViewManager.shared.webView
+        if wv.frame.size != contentContainer.bounds.size {
+            wv.frame = contentContainer.bounds
+        }
         wv.alphaValue = 1
         removeNonWebViewSubviews()
         wv.window?.makeFirstResponder(wv)
@@ -432,6 +381,7 @@ class NoteWindowController: NSWindowController, NSWindowDelegate {
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
+        if suppressCloseDeletion { return true }
         guard let coordinator = coordinator else { return true }
         if coordinator.isQuitting { return true }
 
@@ -470,7 +420,10 @@ class NoteWindowController: NSWindowController, NSWindowDelegate {
             SharedWebViewManager.shared.webView.removeFromSuperview()
             hasWebView = false
         }
-        coordinator?.closeNoteWindow(note.id)
+        SharedWebViewManager.shared.hostWillClose(self)
+        if !suppressCloseDeletion {
+            coordinator?.closeNoteWindow(note.id)
+        }
     }
 
     func windowDidResize(_ notification: Notification) {
@@ -496,6 +449,28 @@ class NoteWindowController: NSWindowController, NSWindowDelegate {
 
     func windowDidDeminiaturize(_ notification: Notification) {
         coordinator?.handleWindowStateChange(noteId: note.id, isMinimized: false)
+    }
+
+    // MARK: - Dragging onto the stack
+
+    private func titlebarDragMoved(to frame: NSRect) {
+        guard let coordinator, !note.isStacked else { return }
+        let overStack = coordinator.windowManager.stackWindowController?.window?
+            .frame.contains(NSPoint(x: frame.midX, y: frame.midY)) ?? false
+        coordinator.windowManager.stackWindowController?.setDropHighlight(overStack)
+    }
+
+    private func titlebarDragEnded(at frame: NSRect) {
+        guard let coordinator else { return }
+        coordinator.windowManager.stackWindowController?.setDropHighlight(false)
+
+        guard !note.isStacked,
+              let stack = coordinator.windowManager.stackWindowController,
+              let stackFrame = stack.window?.frame,
+              stackFrame.contains(NSPoint(x: frame.midX, y: frame.midY)) else {
+            return
+        }
+        coordinator.moveNoteToStack(noteId: note.id)
     }
 
     // MARK: - Public Methods
@@ -540,7 +515,7 @@ class NoteWindowController: NSWindowController, NSWindowDelegate {
 
 // MARK: - Titlebar Views
 
-private class TitlebarControlsView: NSView {
+class TitlebarControlsView: NSView {
     override func resetCursorRects() {
         addCursorRect(bounds, cursor: .arrow)
     }
@@ -548,6 +523,11 @@ private class TitlebarControlsView: NSView {
 
 private class TitlebarCursorView: NSView {
     private var trackingArea: NSTrackingArea?
+
+    /// Called while the window is dragged, with its current frame.
+    var onDragMoved: ((NSRect) -> Void)?
+    /// Called when the drag ends, with the window's final frame.
+    var onDragEnded: ((NSRect) -> Void)?
 
     /// Window origin and pointer location at mouse-down, in global points.
     /// Dragging is done here instead of forwarding to NSWindow so crossing
@@ -606,9 +586,13 @@ private class TitlebarCursorView: NSView {
                 y: origin.y + current.y - start.y
             )
         )
+        onDragMoved?(window.frame)
     }
 
     override func mouseUp(with event: NSEvent) {
+        if let window, dragOrigin != nil {
+            onDragEnded?(window.frame)
+        }
         dragOrigin = nil
         dragStart = nil
     }

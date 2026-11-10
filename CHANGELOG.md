@@ -2,6 +2,27 @@
 
 All notable changes to MD Sticky Notes will be documented in this file.
 
+## [Unreleased]
+
+### Note stacks
+
+- Notes added to the notes folder join one default stack, shown as a single
+  window with the front sheet on top and the sheets underneath peeking out at
+  its bottom/right edge (plus a count badge)
+- Hovering the stack reveals a pair of chevrons that cycle the front sheet in
+  creation order (newest on top); the front sheet is remembered in `stack.json`
+- Hold ⌥ and drag to pull the front sheet out into a normal window at the drop
+  point; the remaining notes stay in the stack
+- Put a placed note back: drag it onto the stack, or use File > Move Note to Stack
+- The stack keeps its own size while switching sheets; resizing it updates the
+  stack, not the sheet you happen to be looking at
+- The close button trashes the front sheet and reveals the next one; it closes
+  only when the last note is gone
+- Stack membership lives only in `index.json` (`stackID`); the Markdown file is
+  unchanged, so a stacked note is a normal note on disk
+- Existing placed notes keep their positions. A stack appears when a new note
+  is created or a file is added to the notes folder
+
 ## [1.3.2] - 2026-11-08
 
 ### The app is named “Sticky Notes”

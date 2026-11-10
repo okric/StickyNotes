@@ -112,6 +112,12 @@ struct MenuBarCommands: Scene {
                     coordinator.showAllNotes()
                 }
 
+                Button("Move Note to Stack") {
+                    if let noteId = coordinator.focusedNoteId() {
+                        coordinator.moveNoteToStack(noteId: noteId)
+                    }
+                }
+
                 Button("Show Notes Folder") {
                     coordinator.settings.revealDefaultFolder()
                 }

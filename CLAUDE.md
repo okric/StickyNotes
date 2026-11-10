@@ -78,6 +78,9 @@ editor-web/webpack.config.cjs     # 단일 번들, 폰트 base64 인라인
 Sources/StickyNotes/App/SharedWebViewManager.swift       # 단일 WKWebView 소유, 노트 전환 (stateCache)
 Sources/StickyNotes/Bridge/SharedEditorBridge.swift      # noteId 기반 Swift-JS 메시지 라우팅
 Sources/StickyNotes/Views/NoteWindow/NoteWindowController.swift  # WebView reparent, snapshot/preview
+Sources/StickyNotes/Views/NoteWindow/StackWindowController.swift # default stack window, sheet cycling, ⌥-drag tear-out
+Sources/StickyNotes/Models/NoteStack.swift                # stack position/front sheet (stack.json)
+Sources/StickyNotes/App/WebViewHost.swift                 # note window + stack window protocol for the shared WebView
 Sources/StickyNotes/App/AppCoordinator.swift             # 앱 조율 (Combine)
 Sources/StickyNotes/App/NotesStore.swift                 # index.json/settings.json + .md 읽기/쓰기
 Sources/StickyNotes/App/NotesFolderMonitor.swift         # FSEvents 폴더 감시, 외부 변경 동기화
@@ -159,6 +162,7 @@ Sources/StickyNotes/Views/SettingsView.swift             # Settings 창 (Cmd+,)
 45. **시작 화면 미리보기 (MarkdownPreview)**: 공유 WKWebView가 붙기 전에는 plain NSTextView로 내용을 보여준다. raw markdown을 그대로 넣으면 헤딩이 14pt로 보여 "작게 렌더링"된 것처럼 보이므로 `AttributedString(markdown:options: .init(interpretedSyntax: .full))`로 파싱해 에디터 타입 스케일(1.8em/1.5em/…, bold, mono code, bullet)로 스타일링한다. 주의: full 파싱은 **블록 구분 개행을 characters에서 제거**하므로 `presentationIntent.components.first.identity`(블록마다 고유)가 바뀔 때 "\n"을 직접 넣어야 한다. 코드블록 내부 개행은 유지됨
 46. **pre-render 스냅샷 크기**: 공유 WKWebView는 active 창에 있으므로 `preRenderInactiveNotes`에서 다른 노트를 스냅샷할 때 **그 노트 창의 contentSize로 webView.frame을 잠시 바꿔야** 한다. 안 그러면 active 창 크기로 캡처한 이미지가 작은 창에 aspect-fit 되어 **글자가 축소**된다(시작 직후 일부 노트만 작아 보이고 클릭하면 정상으로 돌아오는 증상). 스냅샷 후 원래 active 크기로 복원
 47. **Remote notes (read-only)**: 공유 URL `/n/<shareId>` → `RemoteNoteLink.parse` → open 엔드포인트 `GET /api/shared/<shareId>` (토큰 불필요) → `Note(sourceKind: .remoteURL, remoteBaseURL/remoteNoteID/remoteShareID/remoteRevision)`. 본문은 `Application Support/com.mdstickynotes/remote/<noteID>.md` 캐시(오프라인), 5초 폴링으로 revision 비교 후 `updateRemoteNote` + `applyRemoteUpdate`. 편집 차단은 JS `window.setReadOnly` (Compartment로 `EditorState.readOnly` + `EditorView.editable`), `attachWebView`/`markReady`에서 적용. 쓰기(PATCH + If-Match)는 `notes` 스코프 토큰과 함께 아직 미구현
+48. **Stack window shares the single WKWebView**: the stack and note windows are both `WebViewHost`s. `SharedWebViewManager.activeHost` must be updated on every attach — `activeNoteId` alone is ambiguous during a tear-out, when the same note briefly has both a note window and the stack registered. Pre-rendering captures `preRenderSuperview` and stops if a window attaches mid-pass; otherwise the in-flight `setContentForSnapshot`/frame restore runs after the move and leaves the new host blank (WebView frame 0).
 
 ## Lezer Markdown Node Names
 

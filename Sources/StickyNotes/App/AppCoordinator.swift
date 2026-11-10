@@ -70,14 +70,17 @@ class AppCoordinator: ObservableObject {
 
     // MARK: - Public Methods
 
-    /// Create a new note and open its window on the current screen
+    /// Create a new note. New notes live in the notes folder, so they join the
+    /// default stack and appear as its front sheet.
     func createNewNote() {
-        let position = calculateNewNotePosition()
+        let position = noteManager.stack?.position ?? calculateNewNotePosition()
         guard let note = noteManager.createNote(position: position) else {
             NSSound.beep()
             return
         }
-        windowManager.openWindow(for: note, coordinator: self)
+        syncStackWindow()
+        windowManager.stackWindowController?.refreshFromModel()
+        windowManager.bringToFront(note.id)
     }
 
     /// Called when a note window is closing (from windowWillClose delegate).
@@ -142,8 +145,14 @@ class AppCoordinator: ObservableObject {
             NSSound.beep()
             return nil
         }
-        windowManager.openWindow(for: note, coordinator: self)
-        windowManager.bringToFront(note.id)
+        if note.isStacked {
+            syncStackWindow()
+            windowManager.stackWindowController?.refreshFromModel()
+            windowManager.bringToFront(note.id)
+        } else {
+            windowManager.openWindow(for: note, coordinator: self)
+            windowManager.bringToFront(note.id)
+        }
         return note
     }
 
@@ -408,9 +417,10 @@ class AppCoordinator: ObservableObject {
         )
     }
 
-    /// Reopen windows for all existing notes
+    /// Reopen windows for all existing notes (the stack is one window)
     func showAllNotes() {
-        for note in noteManager.notes {
+        syncStackWindow()
+        for note in noteManager.notes where !note.isStacked {
             windowManager.openWindow(for: note, coordinator: self)
         }
     }
@@ -418,19 +428,42 @@ class AppCoordinator: ObservableObject {
     /// Change a note's color theme
     func changeNoteColor(noteId: UUID, colorTheme: String) {
         noteManager.updateNoteColor(noteId, colorTheme: colorTheme)
-        windowManager.getWindowController(for: noteId)?.setColorTheme(colorTheme)
+        if let controller = windowManager.getWindowController(for: noteId) {
+            controller.setColorTheme(colorTheme)
+        } else {
+            windowManager.stackWindowController?.applyColorTheme(colorTheme)
+        }
     }
 
     /// Change a note's opacity
     func setNoteOpacity(noteId: UUID, opacity: Double) {
         noteManager.updateNoteWindow(noteId, opacity: opacity)
-        windowManager.getWindowController(for: noteId)?.setOpacity(opacity)
+        if let controller = windowManager.getWindowController(for: noteId) {
+            controller.setOpacity(opacity)
+        } else {
+            windowManager.stackWindowController?.applyOpacity(opacity)
+        }
     }
 
     /// Toggle a note's always-on-top setting
     func setNoteAlwaysOnTop(noteId: UUID, alwaysOnTop: Bool) {
         noteManager.updateNoteAlwaysOnTop(noteId, alwaysOnTop: alwaysOnTop)
-        windowManager.getWindowController(for: noteId)?.setAlwaysOnTop(alwaysOnTop)
+        if let controller = windowManager.getWindowController(for: noteId) {
+            controller.setAlwaysOnTop(alwaysOnTop)
+        } else {
+            windowManager.stackWindowController?.applyAlwaysOnTopSetting(alwaysOnTop)
+        }
+    }
+
+    /// The window (note or stack) that owns the shared WebView for a note.
+    func webViewHost(for noteId: UUID) -> WebViewHost? {
+        if let controller = windowManager.getWindowController(for: noteId) {
+            return controller
+        }
+        if let stack = windowManager.stackWindowController, stack.contains(noteId) {
+            return stack
+        }
+        return nil
     }
 
     /// Get the note ID of the currently focused window
@@ -452,6 +485,64 @@ class AppCoordinator: ObservableObject {
         } else {
             windowManager.bringToFront(allIds[0])
         }
+    }
+
+    // MARK: - Stack
+
+    /// Take a note out of the stack (⌥-drag) and give it its own window at the
+    /// drop point. The Markdown file is untouched; only stack membership and
+    /// window placement change.
+    func pullOutFrontNote(noteId: UUID, to position: CGPoint, size: CGSize) {
+        guard let note = noteManager.getNote(noteId), note.isStacked else { return }
+        guard noteManager.pullOutNote(noteId, to: position) != nil else { return }
+        noteManager.updateNoteWindow(noteId, size: size)
+
+        syncStackWindow()
+        guard let updated = noteManager.getNote(noteId),
+              let controller = windowManager.openWindow(for: updated, coordinator: self) else {
+            return
+        }
+        controller.window?.makeKeyAndOrderFront(nil)
+    }
+
+    /// Put a placed note into the stack (drag onto the stack, or the File menu).
+    /// The note's window closes without trashing the file.
+    func moveNoteToStack(noteId: UUID) {
+        guard let note = noteManager.getNote(noteId), !note.isStacked else {
+            NSSound.beep()
+            return
+        }
+
+        let controller = windowManager.getWindowController(for: noteId)
+        if controller?.hasWebView == true {
+            // Capture the last keystrokes before the note window goes away.
+            SharedWebViewManager.shared.flushCurrentNoteState()
+        }
+
+        guard noteManager.stackNote(noteId) != nil else { return }
+
+        if controller != nil {
+            windowManager.discardWindow(for: noteId)
+        }
+        syncStackWindow()
+        windowManager.stackWindowController?.refreshFromModel()
+        windowManager.stackWindowController?.window?.makeKeyAndOrderFront(nil)
+    }
+
+    /// Keep one stack window alive for as long as the default stack has notes.
+    private func syncStackWindow() {
+        guard let stack = noteManager.stack, !noteManager.stackedNotes.isEmpty else {
+            if windowManager.stackWindowController != nil {
+                // Deferred: this can be reached in the middle of a note mutation
+                // (or a tear-out drag) and closing the window synchronously would
+                // yank the WebView out from under the caller.
+                DispatchQueue.main.async { [weak self] in
+                    self?.windowManager.closeStackWindow()
+                }
+            }
+            return
+        }
+        windowManager.openStackWindow(stack: stack, coordinator: self)
     }
 
     // MARK: - Last Active Note Persistence
@@ -491,7 +582,13 @@ class AppCoordinator: ObservableObject {
     private func setupBindings() {
         noteManager.$notes
             .sink { [weak self] notes in
-                self?.syncWindowsWithNotes(notes)
+                guard let self else { return }
+                self.syncWindowsWithNotes(notes)
+                // @Published sends in willSet, so `noteManager.notes` still
+                // holds the previous array here. Read it on the next turn.
+                DispatchQueue.main.async { [weak self] in
+                    self?.windowManager.stackWindowController?.refreshFromModel()
+                }
             }
             .store(in: &cancellables)
 
@@ -505,9 +602,10 @@ class AppCoordinator: ObservableObject {
             .store(in: &cancellables)
     }
 
-    /// Open windows for all persisted notes
+    /// Open windows for all persisted notes. Stacked notes share one window.
     private func openInitialWindows() {
-        for note in noteManager.notes {
+        syncStackWindow()
+        for note in noteManager.notes where !note.isStacked {
             windowManager.openWindow(for: note, coordinator: self)
         }
     }
@@ -533,13 +631,17 @@ class AppCoordinator: ObservableObject {
         }
 
         // Removed notes disappear through syncWindowsWithNotes; here we only
-        // need to open and refresh.
-        for note in result.added {
-            guard let current = noteManager.getNote(note.id) else { continue }
-            windowManager.openWindow(for: current, coordinator: self)
+        // need to refresh what is on screen.
+        if !result.added.isEmpty {
+            syncStackWindow()
+            windowManager.stackWindowController?.refreshFromModel()
         }
         for note in result.changed {
-            windowManager.getWindowController(for: note.id)?.applyExternalUpdate(content: note.content)
+            if let controller = windowManager.getWindowController(for: note.id) {
+                controller.applyExternalUpdate(content: note.content)
+            } else if windowManager.stackWindowController?.frontNoteId == note.id {
+                windowManager.stackWindowController?.applyExternalUpdate(content: note.content)
+            }
         }
     }
 

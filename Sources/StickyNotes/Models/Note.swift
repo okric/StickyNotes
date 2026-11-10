@@ -26,6 +26,11 @@ struct Note: Identifiable, Equatable {
     /// Display name, derived from the file name (without `.md`)
     var title: String
 
+    /// Stack this note belongs to, or `nil` when it is placed on its own.
+    /// Stack membership is presentation metadata only: the Markdown file is
+    /// identical whether the note is in a stack or standing alone.
+    var stackID: String?
+
     /// Markdown source. Loaded from disk; never persisted in the index.
     var content: String
 
@@ -88,11 +93,15 @@ struct Note: Identifiable, Equatable {
     /// True for notes served by the Notes API
     var isRemote: Bool { sourceKind == .remoteURL }
 
+    /// True when the note is shown in a stack instead of having its own window.
+    var isStacked: Bool { stackID != nil }
+
     init(
         id: UUID = UUID(),
         sourceKind: NoteSourceKind = .file,
         path: String,
         title: String,
+        stackID: String? = nil,
         content: String = "",
         isMissing: Bool = false,
         position: CGPoint = CGPoint(x: 100, y: 100),
@@ -116,6 +125,7 @@ struct Note: Identifiable, Equatable {
         self.sourceKind = sourceKind
         self.path = path
         self.title = title
+        self.stackID = stackID
         self.content = content
         self.isMissing = isMissing
         self.position = position
@@ -146,7 +156,7 @@ struct Note: Identifiable, Equatable {
 
 extension Note: Codable {
     enum CodingKeys: String, CodingKey {
-        case id, sourceKind, path, title, position, size, isMinimized, opacity
+        case id, sourceKind, path, title, stackID, position, size, isMinimized, opacity
         case colorTheme, cursorPosition, scrollTop, alwaysOnTop, createdAt, modifiedAt
         case screenUUID, screenOffset
         case remoteBaseURL, remoteNoteID, remoteShareID, remoteRevision
@@ -158,6 +168,7 @@ extension Note: Codable {
         sourceKind = try container.decodeIfPresent(NoteSourceKind.self, forKey: .sourceKind) ?? .file
         path = try container.decodeIfPresent(String.self, forKey: .path) ?? ""
         title = try container.decodeIfPresent(String.self, forKey: .title) ?? ""
+        stackID = try container.decodeIfPresent(String.self, forKey: .stackID)
 
         // Transient state, filled in by NoteManager from the backing file.
         content = ""
@@ -199,6 +210,7 @@ extension Note: Codable {
         try container.encode(sourceKind, forKey: .sourceKind)
         try container.encode(path, forKey: .path)
         try container.encode(title, forKey: .title)
+        try container.encodeIfPresent(stackID, forKey: .stackID)
 
         // Encode CGPoint as dictionary
         let positionDict = ["x": position.x, "y": position.y]

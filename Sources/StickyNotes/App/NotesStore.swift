@@ -29,6 +29,7 @@ final class NotesStore {
     let baseDirectory: URL
     var indexURL: URL { baseDirectory.appendingPathComponent("index.json") }
     var settingsURL: URL { baseDirectory.appendingPathComponent("settings.json") }
+    var stackURL: URL { baseDirectory.appendingPathComponent("stack.json") }
 
     private let fileManager = FileManager.default
     private let encoder: JSONEncoder
@@ -81,6 +82,29 @@ final class NotesStore {
             try data.write(to: indexURL, options: .atomic)
         } catch {
             print("[NotesStore] Failed to save index: \(error)")
+        }
+    }
+
+    // MARK: - Stack
+
+    /// The single default stack's window placement and front note.
+    func loadStack() -> NoteStack? {
+        guard let data = try? Data(contentsOf: stackURL) else { return nil }
+        return try? decoder.decode(NoteStack.self, from: data)
+    }
+
+    /// Passing `nil` removes the file (no stacked notes left).
+    func saveStack(_ stack: NoteStack?) {
+        guard let stack else {
+            try? fileManager.removeItem(at: stackURL)
+            return
+        }
+        do {
+            try ensureBaseDirectory()
+            let data = try encoder.encode(stack)
+            try data.write(to: stackURL, options: .atomic)
+        } catch {
+            print("[NotesStore] Failed to save stack: \(error)")
         }
     }
 

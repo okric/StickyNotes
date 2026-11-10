@@ -39,6 +39,25 @@ Open items:
   re-registers itself, so quit stale instances first. Launchpad can need a
   relaunch of the Dock to refresh its cache.
 
+## Note stacks
+
+Shipped: one default stack. Notes created in the app or dropped into the notes
+folder join it; the stack window shows the front sheet with the sheets
+underneath peeking out, a count badge, hover chevrons (newest first), and
+⌥-drag to pull the front note into its own window. A placed note rejoins by
+dragging it onto the stack or with File > Move Note to Stack. The close button
+trashes the front sheet and reveals the next one. Membership is an index field
+only; `.md` files are untouched.
+
+Open items:
+
+- **Only one stack exists.** `Note.stackID` is a string and `stack.json` holds
+  one record, so named/multiple stacks can be added without changing the file
+  format.
+- The stack keeps its own size while switching sheets; member notes keep their
+  old `size` values until they are pulled out (the pull-out uses the stack's
+  current size).
+
 ## Remote notes (Notes API)
 
 Shipped: File > Open Note URL… (Cmd+Shift+O) or

@@ -17,11 +17,19 @@ class SharedWebViewManager {
     /// Currently active note ID (the note being edited)
     private(set) var activeNoteId: UUID?
 
+    /// Window currently holding the WebView. Tracked explicitly: the same note
+    /// can briefly have both a note window and the stack window registered.
+    private(set) weak var activeHost: WebViewHost?
+
     /// Cached serialized EditorState per note (JSON string from serializeState)
     private var stateCache: [UUID: String] = [:]
 
     /// Whether the editor JS has finished loading
     private(set) var isReady = false
+
+    /// Superview the WebView had when the current pre-render pass started.
+    /// If a window attaches mid-pass, `superview` changes and the pass stops.
+    private weak var preRenderSuperview: NSView?
 
     /// Coordinator reference for bridge callbacks
     weak var coordinator: AppCoordinator?
@@ -114,10 +122,10 @@ class SharedWebViewManager {
 
             // Reveal WebView in the active window
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
-                guard let self = self,
-                      let noteId = self.activeNoteId,
-                      let wc = self.coordinator?.windowManager.getWindowController(for: noteId) else { return }
-                wc.revealWebView()
+                guard let self = self else { return }
+                let host = self.activeHost
+                    ?? self.activeNoteId.flatMap { self.coordinator?.webViewHost(for: $0) }
+                host?.revealWebView()
             }
         }
     }
@@ -131,9 +139,14 @@ class SharedWebViewManager {
             return
         }
 
+        preRenderSuperview = webView.superview
+
         let otherNotes = coordinator.noteManager.notes
             .filter { $0.id != activeNoteId }
             .filter { !$0.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            // Stacked notes other than the front sheet have no window to show
+            // a snapshot in; don't render them into nowhere.
+            .filter { coordinator.webViewHost(for: $0.id) != nil }
 
         guard !otherNotes.isEmpty else {
             completion()
@@ -150,8 +163,15 @@ class SharedWebViewManager {
             return
         }
 
+        // A window attached the WebView while we were rendering previews. Stop:
+        // pre-rendering must only touch the editor it started with.
+        guard webView.superview === preRenderSuperview else {
+            completion()
+            return
+        }
+
         let note = notes[index]
-        let targetController = coordinator?.windowManager.getWindowController(for: note.id)
+        let targetController = coordinator?.webViewHost(for: note.id)
 
         // The shared WebView is sitting in the active window. Render this note
         // at the size of the window that will display the snapshot, otherwise
@@ -184,7 +204,15 @@ class SharedWebViewManager {
 
                 self.webView.evaluateJavaScript("window.endSnapshotMode()")
 
-                if let image = image {
+                // If the WebView was reparented while this render was in
+                // flight, leave its frame/content alone and stop.
+                let moved = self.webView.superview !== self.preRenderSuperview
+                if moved {
+                    completion()
+                    return
+                }
+
+                if let image = image, targetController?.hasWebView != true {
                     targetController?.showSnapshot(image)
                 }
 
@@ -209,6 +237,77 @@ class SharedWebViewManager {
             in: .page,
             completionHandler: nil
         )
+    }
+
+    /// Serialize the active note and leave a snapshot/preview in the window the
+    /// WebView is about to leave. Call before reparenting the WebView.
+    ///
+    /// Runs synchronously (RunLoop-spins) because the WebView must still be in
+    /// the old window when `takeSnapshot` runs.
+    func snapshotActiveHostBeforeMove() {
+        guard let oldId = activeNoteId,
+              let oldHost = activeHost,
+              oldHost.hasWebView else { return }
+
+        oldHost.hasWebView = false
+
+        guard isReady else {
+            // Editor has not rendered yet; don't serialize an empty state.
+            oldHost.showTextPreview()
+            return
+        }
+
+        // A. Serialize state first (preserves cursor/scroll before reset).
+        var serializedState: String?
+        var serializeDone = false
+        webView.evaluateJavaScript("window.serializeState()") { result, _ in
+            serializedState = result as? String
+            serializeDone = true
+        }
+        let serializeDeadline = Date().addingTimeInterval(0.1)
+        while !serializeDone && Date() < serializeDeadline {
+            RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
+        }
+        if let json = serializedState {
+            cacheSerializedState(json, for: oldId)
+        }
+
+        // B. Collapse cursor unfolds, disable transitions, and blur.
+        var prepareDone = false
+        webView.evaluateJavaScript("window.prepareForSnapshot()") { _, _ in
+            prepareDone = true
+        }
+        let prepareDeadline = Date().addingTimeInterval(0.1)
+        while !prepareDone && Date() < prepareDeadline {
+            RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
+        }
+
+        // C. Wait for one paint cycle (transitions are off).
+        let renderDeadline = Date().addingTimeInterval(0.05)
+        while Date() < renderDeadline {
+            RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
+        }
+
+        // D. Snapshot while the WebView is still in the old window.
+        var snapshot: NSImage?
+        var done = false
+        webView.takeSnapshot(with: WKSnapshotConfiguration()) { image, _ in
+            snapshot = image
+            done = true
+        }
+        let deadline = Date().addingTimeInterval(0.1)
+        while !done && Date() < deadline {
+            RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
+        }
+
+        // E. Re-enable transitions.
+        webView.evaluateJavaScript("window.endSnapshotMode()")
+
+        if let image = snapshot {
+            oldHost.showSnapshot(image)
+        } else {
+            oldHost.showTextPreview()
+        }
     }
 
     /// Switch the editor to a different note.
@@ -355,6 +454,18 @@ class SharedWebViewManager {
         let deadline = Date().addingTimeInterval(0.5)
         while pending > 0 && Date() < deadline {
             RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
+        }
+    }
+
+    /// Record the window that just took ownership of the WebView.
+    func setActiveHost(_ host: WebViewHost) {
+        activeHost = host
+    }
+
+    /// The host is going away; stop treating it as the owner.
+    func hostWillClose(_ host: WebViewHost) {
+        if activeHost === host {
+            activeHost = nil
         }
     }
 

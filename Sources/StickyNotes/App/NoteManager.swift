@@ -11,6 +11,9 @@ class NoteManager: ObservableObject {
 
     @Published private(set) var notes: [Note] = []
 
+    /// The single default stack (position + front note), if it exists.
+    @Published private(set) var stack: NoteStack?
+
     // MARK: - Private Properties
 
     private let store: NotesStore
@@ -31,7 +34,9 @@ class NoteManager: ObservableObject {
     init(store: NotesStore, settings: AppSettings) {
         self.store = store
         self.settings = settings
+        self.stack = store.loadStack()
         loadNotes()
+        reconcileStack()
     }
 
     // MARK: - Loading
@@ -91,6 +96,176 @@ class NoteManager: ObservableObject {
         return note
     }
 
+    // MARK: - Stack
+
+    /// Member notes, front sheet first (newest note on top).
+    var stackedNotes: [Note] {
+        guard let stackID = stack?.id else { return [] }
+        return notes
+            .filter { $0.stackID == stackID }
+            .sorted(by: Self.stackOrder)
+    }
+
+    /// Newest first; stable when files were added in the same instant.
+    private static func stackOrder(_ a: Note, _ b: Note) -> Bool {
+        if a.createdAt != b.createdAt {
+            return a.createdAt > b.createdAt
+        }
+        return a.id.uuidString < b.id.uuidString
+    }
+
+    /// The note currently shown by the stack window.
+    var frontStackedNote: Note? {
+        guard let stack, !stackedNotes.isEmpty else { return nil }
+        if let frontNoteID = stack.frontNoteID,
+           let note = notes.first(where: {
+               $0.id == frontNoteID && $0.stackID == stack.id
+           }) {
+            return note
+        }
+        return stackedNotes.first
+    }
+
+    /// Make `noteId` the front sheet. Persisted so it survives relaunch.
+    func setStackFront(_ noteId: UUID) {
+        guard var stack,
+              notes.contains(where: {
+                  $0.id == noteId && $0.stackID == stack.id
+              }) else { return }
+        guard stack.frontNoteID != noteId else { return }
+        stack.frontNoteID = noteId
+        self.stack = stack
+        store.saveStack(stack)
+    }
+
+    /// Create the default stack, or move it when it already exists.
+    @discardableResult
+    func ensureStack(
+        at position: CGPoint,
+        size: CGSize? = nil,
+        frontNoteID: UUID? = nil
+    ) -> NoteStack {
+        if var stack {
+            if let frontNoteID { stack.frontNoteID = frontNoteID }
+            if stack.size == nil { stack.size = size }
+            self.stack = stack
+            store.saveStack(stack)
+            return stack
+        }
+        let stack = NoteStack(
+            position: position,
+            size: size,
+            frontNoteID: frontNoteID
+        )
+        self.stack = stack
+        store.saveStack(stack)
+        return stack
+    }
+
+    /// Remember where the stack window is. Called from `windowDidMove` only.
+    func updateStackPlacement(
+        position: CGPoint,
+        screenUUID: String?,
+        screenOffset: CGPoint?
+    ) {
+        guard var stack else { return }
+        guard stack.position != position
+                || stack.screenUUID != screenUUID
+                || stack.screenOffset != screenOffset else { return }
+        stack.position = position
+        stack.screenUUID = screenUUID
+        stack.screenOffset = screenOffset
+        self.stack = stack
+        store.saveStack(stack)
+    }
+
+    /// Remember the stack window's card size. Switching sheets never changes it.
+    func updateStackSize(_ size: CGSize) {
+        guard var stack else { return }
+        guard stack.size != size else { return }
+        stack.size = size
+        self.stack = stack
+        store.saveStack(stack)
+    }
+
+    /// Put a placed note back into the default stack and make it the front sheet.
+    @discardableResult
+    func stackNote(_ noteId: UUID) -> Note? {
+        guard let index = notes.firstIndex(where: { $0.id == noteId }) else {
+            return nil
+        }
+        guard !notes[index].isStacked else { return notes[index] }
+
+        let stackPosition = stack?.position ?? notes[index].position
+        ensureStack(at: stackPosition, size: notes[index].size, frontNoteID: noteId)
+
+        notes[index].stackID = NoteStack.defaultID
+        notes[index].position = stackPosition
+        notes[index].updateModificationDate()
+        store.saveIndex(notes)
+        reconcileStack()
+        print("[NoteManager] Added note \(noteId) to the stack")
+        return notes.first { $0.id == noteId }
+    }
+
+    /// Take a note out of the stack. It gets its own window position again.
+    @discardableResult
+    func pullOutNote(
+        _ noteId: UUID,
+        to position: CGPoint,
+        screenUUID: String? = nil,
+        screenOffset: CGPoint? = nil
+    ) -> Note? {
+        guard let index = notes.firstIndex(where: {
+            $0.id == noteId && $0.isStacked
+        }) else { return nil }
+
+        notes[index].stackID = nil
+        notes[index].position = position
+        notes[index].screenUUID = screenUUID
+        notes[index].screenOffset = screenOffset
+        notes[index].updateModificationDate()
+        store.saveIndex(notes)
+        reconcileStack()
+        print("[NoteManager] Pulled note \(noteId) out of the stack")
+        return notes.first { $0.id == noteId }
+    }
+
+    /// Drop stack membership when there are no member notes left, and make
+    /// sure the stored front sheet still exists (newest fallback).
+    private func reconcileStack() {
+        if stack == nil, let member = notes.first(where: { $0.isStacked }) {
+            // stack.json went missing: rebuild from a member's saved position
+            // rather than dropping every note out of the stack.
+            stack = NoteStack(
+                id: member.stackID ?? NoteStack.defaultID,
+                position: member.position,
+                frontNoteID: member.id
+            )
+        }
+        guard var stack else { return }
+        let members = notes
+            .filter { $0.stackID == stack.id }
+            .sorted(by: Self.stackOrder)
+
+        guard !members.isEmpty else {
+            self.stack = nil
+            store.saveStack(nil)
+            print("[NoteManager] Stack is empty; removed stack.json")
+            return
+        }
+
+        if let front = stack.frontNoteID,
+           members.contains(where: { $0.id == front }) {
+            self.stack = stack
+            return
+        }
+
+        stack.frontNoteID = members.first?.id
+        self.stack = stack
+        store.saveStack(stack)
+    }
+
     // MARK: - Public Methods
 
     /// Extensions the app can open. Kept in sync with the `UTImportedTypeDeclarations`
@@ -121,6 +296,9 @@ class NoteManager: ObservableObject {
                 notes[index].content = content
                 notes[index].isMissing = false
             }
+            if notes[index].isStacked {
+                setStackFront(notes[index].id)
+            }
             return notes[index]
         }
 
@@ -129,14 +307,29 @@ class NoteManager: ObservableObject {
             return nil
         }
 
+        // Files opened from the notes folder are "added to the folder", so they
+        // join the default stack. Files opened from anywhere else stay placed.
+        let joinsStack = settings.defaultFolderURL.map {
+            Self.isInside(url, $0.standardizedFileURL)
+        } ?? false
+
         let colors = NoteColor.allCases
-        let note = Note(
+        var note = Note(
             path: url.path,
             title: url.deletingPathExtension().lastPathComponent,
+            stackID: joinsStack ? NoteStack.defaultID : nil,
             content: content,
             position: position,
             colorTheme: colors[notes.count % colors.count].rawValue
         )
+        if joinsStack {
+            let stack = ensureStack(
+                at: position,
+                size: note.size,
+                frontNoteID: note.id
+            )
+            note.position = stack.position
+        }
         notes.append(note)
         store.saveIndex(notes)
         print("[NoteManager] Opened external file: \(url.path)")
@@ -260,9 +453,12 @@ class NoteManager: ObservableObject {
             removedIds.insert(note.id)
         }
 
-        // Files that appeared since the last pass.
+        // Files that appeared since the last pass. They join the default stack;
+        // the stack keeps its existing spot, or appears where the first added
+        // note would have gone.
         let known = localNotes.map { URL(fileURLWithPath: $0.path) }
         var added: [Note] = []
+        let stackPosition = stack?.position ?? position(0)
         for url in files where !known.contains(where: { Self.sameFile($0, url) }) {
             guard let content = try? String(contentsOf: url, encoding: .utf8) else {
                 print("[NoteManager] Skipped unreadable file: \(url.path)")
@@ -272,8 +468,9 @@ class NoteManager: ObservableObject {
             added.append(Note(
                 path: url.path,
                 title: url.deletingPathExtension().lastPathComponent,
+                stackID: NoteStack.defaultID,
                 content: content,
-                position: position(added.count),
+                position: stackPosition,
                 colorTheme: colors[(notes.count + added.count) % colors.count].rawValue
             ))
         }
@@ -306,8 +503,16 @@ class NoteManager: ObservableObject {
         }
         if !added.isEmpty {
             notes.append(contentsOf: added)
+            if stack == nil {
+                ensureStack(
+                    at: stackPosition,
+                    size: added.first?.size,
+                    frontNoteID: added.first?.id
+                )
+            }
         }
         store.saveIndex(notes)
+        reconcileStack()
 
         result.added = added
         result.changed = changed
@@ -364,13 +569,20 @@ class NoteManager: ObservableObject {
                 content: content
             )
             let colors = NoteColor.allCases
-            let note = Note(
+            var note = Note(
                 path: url.path,
                 title: url.deletingPathExtension().lastPathComponent,
+                stackID: NoteStack.defaultID,
                 content: content,
                 position: position,
                 colorTheme: colors[notes.count % colors.count].rawValue
             )
+            let stack = ensureStack(
+                at: position,
+                size: note.size,
+                frontNoteID: note.id
+            )
+            note.position = stack.position
             notes.append(note)
             store.saveIndex(notes)
             print("[NoteManager] Created note file: \(url.path)")
@@ -500,6 +712,7 @@ class NoteManager: ObservableObject {
 
         notes.removeAll { $0.id == noteId }
         store.saveIndex(notes)
+        reconcileStack()
         print("[NoteManager] Removed note \(noteId) from the index")
     }
 

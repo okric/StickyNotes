@@ -42,6 +42,9 @@ XCODE_ARGS=(
     -scheme "$PROJECT_NAME"
     -configuration Release
     -derivedDataPath "$DERIVED"
+    # A user-level SYMROOT preference can otherwise redirect products away
+    # from $DERIVED, and the copy below fails. Pin it to derived data.
+    SYMROOT="$DERIVED/Build/Products"
     build
 )
 
