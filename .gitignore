@@ -64,3 +64,4 @@ Sources/StickyNotes/Resources/Editor/editor.bundle.js
 .*.swp
 .*.swo
 *.sublime-workspace
+.idea/
