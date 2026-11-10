@@ -1,8 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// Settings window (Cmd+,). Only controls where *new* notes are created;
-/// existing notes keep their own paths.
+/// Settings window (Cmd+,).
 struct SettingsView: View {
     @ObservedObject var settings: AppSettings
     @ObservedObject var launchAtLogin: LaunchAtLogin
@@ -14,19 +13,35 @@ struct SettingsView: View {
     @State private var tokenStored = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Notes Folder")
-                .font(.headline)
+        Group {
+            if #available(macOS 13.0, *) {
+                Form { sections }
+                    .formStyle(.grouped)
+            } else {
+                Form { sections }
+            }
+        }
+        .frame(width: 540)
+        .fixedSize(horizontal: false, vertical: true)
+        .onAppear {
+            serverURL = settings.notesServerURLString
+            refreshTokenStatus()
+            launchAtLogin.refresh()
+        }
+        .onChange(of: serverURL) { _ in
+            refreshTokenStatus()
+        }
+    }
 
+    @ViewBuilder
+    private var sections: some View {
+        Section {
             Text(settings.defaultFolderPath ?? "No folder selected")
                 .font(.callout)
                 .lineLimit(1)
                 .truncationMode(.middle)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(8)
-                .background(Color(nsColor: .textBackgroundColor))
-                .cornerRadius(6)
 
             HStack(spacing: 8) {
                 Button("Choose Folder…") { chooseFolder() }
@@ -42,31 +57,39 @@ struct SettingsView: View {
                 .disabled(settings.defaultFolderURL == nil)
             }
 
-            Divider()
+            Text("""
+            Each sticky note is a Markdown file in this folder. Changes are saved \
+            directly to the file, so notes can live in an Obsidian vault or any \
+            other folder you already use. Changing the folder only affects new \
+            notes; open notes keep their current files.
+            """)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        } header: {
+            Text("Notes Folder")
+        }
 
-            Text("Fonts")
-                .font(.headline)
-
+        Section {
             Picker("Note body", selection: noteFontBinding) {
                 ForEach(NoteFont.choices, id: \.self) { family in
                     Text(family)
                 }
             }
+            .pickerStyle(.menu)
 
             Picker("Note title", selection: titleFontBinding) {
                 ForEach(NoteFont.choices, id: \.self) { family in
                     Text(family)
                 }
             }
+            .pickerStyle(.menu)
+        } header: {
+            Text("Fonts")
+        }
 
-            Divider()
-
-            Text("Notes Server")
-                .font(.headline)
-
+        Section {
             HStack(spacing: 8) {
                 TextField("https://notes.example.com", text: $serverURL)
-                    .textFieldStyle(.roundedBorder)
                 Button("Save") { saveServerURL() }
             }
 
@@ -78,42 +101,39 @@ struct SettingsView: View {
                     Spacer()
                     Button("Clear Token") { clearToken() }
                 }
-                .padding(8)
-                .background(Color(nsColor: .textBackgroundColor))
-                .cornerRadius(6)
             } else {
                 HStack(spacing: 8) {
                     SecureField("API token (nk_…)", text: $token)
-                        .textFieldStyle(.roundedBorder)
                     Button("Save Token") { saveToken() }
                 }
             }
 
             Text(tokenStatus)
-                .font(.callout)
-                .foregroundColor(tokenStatusIsError ? .red : .secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .font(.caption)
+                .foregroundStyle(tokenStatusIsError ? AnyShapeStyle(Color.red) : AnyShapeStyle(.secondary))
+                .lineLimit(2)
 
             Picker("Check the server every", selection: pollBinding) {
                 ForEach(AppSettings.inboxPollChoices, id: \.self) { minutes in
                     Text(minutes == 1 ? "1 minute" : "\(minutes) minutes")
                 }
             }
+            .pickerStyle(.menu)
 
             Text("""
-            Remote notes and the notes inbox need an API token. Tokens are stored in the macOS Keychain, never in the app's settings files. Create one on the server with:
+            Remote notes and the notes inbox need an API token. Tokens are stored \
+            in the macOS Keychain, never in the app's settings files. Create one \
+            on the server with:
 
             npm run add-token -- "mac sticky"
             """)
-            .font(.callout)
-            .foregroundColor(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        } header: {
+            Text("Notes Server")
+        }
 
-            Divider()
-
-            Text("Startup")
-                .font(.headline)
-
+        Section {
             Toggle("Launch at login", isOn: Binding(
                 get: { launchAtLogin.isEnabled },
                 set: { launchAtLogin.setEnabled($0) }
@@ -125,7 +145,8 @@ struct SettingsView: View {
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
                     Text("Updating login item…")
-                        .font(.callout)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
 
@@ -134,8 +155,8 @@ struct SettingsView: View {
                     "Approval is needed in System Settings → General → Login Items.",
                     systemImage: "exclamationmark.triangle.fill"
                 )
-                .font(.callout)
-                .foregroundColor(.orange)
+                .font(.caption)
+                .foregroundStyle(.orange)
                 Button("Open Login Items Settings") {
                     launchAtLogin.openSystemSettings()
                 }
@@ -143,41 +164,18 @@ struct SettingsView: View {
 
             if let error = launchAtLogin.errorMessage {
                 Text(error)
-                    .font(.callout)
-                    .foregroundColor(.red)
+                    .font(.caption)
+                    .foregroundStyle(.red)
                     .lineLimit(2)
             }
 
             Text(LaunchAtLogin.isSupported
                 ? "Starts Sticky Notes when you log in. The app must be installed in Applications."
                 : "Launch at login requires macOS 13 or later.")
-            .font(.callout)
-            .foregroundColor(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
-
-            Divider()
-
-            Text("""
-            Each sticky note is a Markdown file in this folder. Changes are saved \
-            directly to the file, so notes can live in an Obsidian vault or any \
-            other folder you already use.
-
-            Changing the folder only affects new notes; open notes keep their \
-            current files.
-            """)
-            .font(.callout)
-            .foregroundColor(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(20)
-        .frame(width: 540)
-        .onAppear {
-            serverURL = settings.notesServerURLString
-            refreshTokenStatus()
-            launchAtLogin.refresh()
-        }
-        .onChange(of: serverURL) { _ in
-            refreshTokenStatus()
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        } header: {
+            Text("Startup")
         }
     }
 

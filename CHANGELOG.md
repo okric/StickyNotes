@@ -66,6 +66,8 @@ All notable changes to MD Sticky Notes will be documented in this file.
   created before the choice
 - Settings hides "Create Folder in Documents" while `~/Documents/Sticky Notes`
   already exists
+- Settings uses grouped sections (Notes Folder, Fonts, Notes Server, Startup)
+  with controls on the trailing edge, matching the tracker app's design
 
 ## [1.3.2] - 2026-11-08
 
