@@ -135,7 +135,7 @@ final class StackWindowController: NSWindowController, NSWindowDelegate, WebView
             panel.removeTitlebarAccessoryViewController(at: 0)
         }
 
-        let container = TitlebarControlsView(frame: NSRect(x: 0, y: 0, width: 190, height: 22))
+        let container = TitlebarControlsView(frame: NSRect(x: 0, y: 0, width: 214, height: 22))
         var xOffset: CGFloat = 4
 
         let slider = NSSlider(frame: NSRect(x: xOffset, y: 4, width: 50, height: 14))
@@ -168,7 +168,24 @@ final class StackWindowController: NSWindowController, NSWindowDelegate, WebView
         pin.toolTip = "Always on Top"
         pinButton = pin
         container.addSubview(pin)
-        xOffset += 26
+        xOffset += 24
+
+        let rename = NSButton(frame: NSRect(x: xOffset, y: 2, width: 18, height: 18))
+        rename.wantsLayer = true
+        rename.bezelStyle = .regularSquare
+        rename.isBordered = false
+        rename.title = ""
+        if let img = NSImage(systemSymbolName: "pencil", accessibilityDescription: "Rename")?
+            .withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 11, weight: .medium)) {
+            rename.image = img
+        }
+        rename.contentTintColor = .labelColor
+        rename.imagePosition = .imageOnly
+        rename.target = self
+        rename.action = #selector(renameClicked)
+        rename.toolTip = "Rename File"
+        container.addSubview(rename)
+        xOffset += 24
 
         for color in NoteColor.allCases {
             let dot = NSButton(frame: NSRect(x: xOffset, y: 5, width: 12, height: 12))
@@ -256,6 +273,14 @@ final class StackWindowController: NSWindowController, NSWindowDelegate, WebView
         label.drawsBackground = false
         titleLabel = label
         strip.addSubview(label)
+
+        let renameGesture = NSClickGestureRecognizer(
+            target: self,
+            action: #selector(renameClicked)
+        )
+        renameGesture.numberOfClicksRequired = 2
+        strip.addGestureRecognizer(renameGesture)
+
         card.addSubview(strip)
 
         let badge = StackBadgeView(frame: NSRect(x: 10, y: 8, width: 46, height: 18))
@@ -515,6 +540,10 @@ final class StackWindowController: NSWindowController, NSWindowDelegate, WebView
         applyAlwaysOnTop(value)
         coordinator?.noteManager.updateStackAppearance(alwaysOnTop: value)
         pinButton?.alphaValue = value ? 1.0 : 0.25
+    }
+
+    @objc private func renameClicked() {
+        coordinator?.promptRenameNote(noteId: frontNote.id)
     }
 
     /// Highlight the stack while a placed note is dragged over it.

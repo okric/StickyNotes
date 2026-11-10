@@ -41,13 +41,13 @@ Open items:
 
 ## Note stacks
 
-Shipped: one default stack. Notes created in the app or dropped into the notes
-folder join it; the stack window shows the front sheet with the sheets
-underneath peeking out, a count badge, hover chevrons (newest first), and
-⌥-drag to pull the front note into its own window. A placed note rejoins by
-dragging it onto the stack or with File > Move Note to Stack. The close button
-trashes the front sheet and reveals the next one. Membership is an index field
-only; `.md` files are untouched.
+Shipped: one default stack. Files that appear in the notes folder from outside
+join it, while Cmd+N creates a placed note. The stack window shows the front
+sheet with the sheets underneath peeking out, a count badge, hover chevrons
+(newest first), and ⌥-drag to pull the front note into its own window. A placed
+note rejoins by dragging it onto the stack or with File > Move Note to Stack.
+The close button trashes the front sheet and reveals the next one. Membership
+is an index field only; `.md` files are untouched.
 
 Open items:
 

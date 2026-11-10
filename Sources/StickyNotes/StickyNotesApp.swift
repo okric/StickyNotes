@@ -118,6 +118,13 @@ struct MenuBarCommands: Scene {
                     }
                 }
 
+                Button("Rename Note…") {
+                    if let noteId = coordinator.focusedNoteId() {
+                        coordinator.promptRenameNote(noteId: noteId)
+                    }
+                }
+                .keyboardShortcut("r", modifiers: [.command, .shift])
+
                 Button("Show Notes Folder") {
                     coordinator.settings.revealDefaultFolder()
                 }

@@ -1,6 +1,23 @@
 import Foundation
 import Combine
 
+enum NoteRenameError: LocalizedError {
+    case remoteNote
+    case invalidName
+    case nameInUse(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .remoteNote:
+            return "Remote notes are renamed on the server, not on disk."
+        case .invalidName:
+            return "Enter a valid file name."
+        case .nameInUse(let title):
+            return "“\(title).md” already exists in this folder."
+        }
+    }
+}
+
 /// Manages the collection of notes.
 ///
 /// Metadata lives in `NotesStore.index`, note bodies live in external Markdown
@@ -243,6 +260,51 @@ class NoteManager: ObservableObject {
         reconcileStack()
         print("[NoteManager] Added note \(noteId) to the stack")
         return notes.first { $0.id == noteId }
+    }
+
+    /// Rename the backing Markdown file. The title is the file name, so the
+    /// note and any open window follow it.
+    @discardableResult
+    func renameNote(_ noteId: UUID, to rawTitle: String) throws -> Note {
+        guard let index = notes.firstIndex(where: { $0.id == noteId }) else {
+            throw NoteRenameError.invalidName
+        }
+        guard !notes[index].isRemote else {
+            throw NoteRenameError.remoteNote
+        }
+
+        let title = NotesStore.sanitizeFileName(rawTitle)
+        guard !title.isEmpty else { throw NoteRenameError.invalidName }
+        guard title != notes[index].title else { return notes[index] }
+
+        let oldURL = URL(fileURLWithPath: notes[index].path)
+        let folder = oldURL.deletingLastPathComponent()
+        let newURL = folder
+            .appendingPathComponent(title)
+            .appendingPathExtension("md")
+
+        if newURL.path.caseInsensitiveCompare(oldURL.path) != .orderedSame,
+           FileManager.default.fileExists(atPath: newURL.path) {
+            throw NoteRenameError.nameInUse(title)
+        }
+
+        if FileManager.default.fileExists(atPath: oldURL.path) {
+            try FileManager.default.moveItem(at: oldURL, to: newURL)
+        } else {
+            // The file went missing; recreate it under the new name so the
+            // note keeps its content instead of becoming a dangling path.
+            var target = notes[index]
+            target.path = newURL.path
+            try store.writeContent(notes[index].content, for: target)
+        }
+
+        notes[index].path = newURL.path
+        notes[index].title = title
+        notes[index].isMissing = false
+        notes[index].updateModificationDate()
+        store.saveIndex(notes)
+        print("[NoteManager] Renamed note \(noteId) to \(title).md")
+        return notes[index]
     }
 
     /// Take a note out of the stack. It gets its own window position again.
@@ -615,20 +677,15 @@ class NoteManager: ObservableObject {
                 content: content
             )
             let colors = NoteColor.allCases
-            var note = Note(
+            // Cmd+N places a note on its own. Only files that appear in the
+            // folder from outside join the default stack automatically.
+            let note = Note(
                 path: url.path,
                 title: url.deletingPathExtension().lastPathComponent,
-                stackID: NoteStack.defaultID,
                 content: content,
                 position: position,
                 colorTheme: colors[notes.count % colors.count].rawValue
             )
-            let stack = ensureStack(
-                at: position,
-                seedNote: note,
-                frontNoteID: note.id
-            )
-            note.position = stack.position
             notes.append(note)
             store.saveIndex(notes)
             print("[NoteManager] Created note file: \(url.path)")

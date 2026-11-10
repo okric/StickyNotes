@@ -70,16 +70,14 @@ class AppCoordinator: ObservableObject {
 
     // MARK: - Public Methods
 
-    /// Create a new note. New notes live in the notes folder, so they join the
-    /// default stack and appear as its front sheet.
+    /// Create a new note on its own window. Cmd+N is a placed note; files that
+    /// appear in the notes folder from outside still join the stack.
     func createNewNote() {
-        let position = noteManager.stack?.position ?? calculateNewNotePosition()
-        guard let note = noteManager.createNote(position: position) else {
+        guard let note = noteManager.createNote(position: calculateNewNotePosition()) else {
             NSSound.beep()
             return
         }
-        syncStackWindow()
-        windowManager.stackWindowController?.refreshFromModel()
+        windowManager.openWindow(for: note, coordinator: self)
         windowManager.bringToFront(note.id)
     }
 
@@ -485,6 +483,52 @@ class AppCoordinator: ObservableObject {
             windowManager.bringToFront(next)
         } else {
             windowManager.bringToFront(allIds[0])
+        }
+    }
+
+    // MARK: - Rename
+
+    /// Ask for a new file name and rename the Markdown file. The title is the
+    /// file name, so the note window and stack update from the same value.
+    func promptRenameNote(noteId: UUID) {
+        guard let note = noteManager.getNote(noteId) else { return }
+        if note.isRemote {
+            let alert = NSAlert()
+            alert.messageText = "Remote note"
+            alert.informativeText = "Remote notes are renamed on the Notes server, not on disk."
+            alert.addButton(withTitle: "OK")
+            NSApp.activate(ignoringOtherApps: true)
+            alert.runModal()
+            return
+        }
+
+        let alert = NSAlert()
+        alert.messageText = "Rename Note"
+        alert.informativeText = "The Markdown file will be renamed. Its contents do not change."
+        alert.addButton(withTitle: "Rename")
+        alert.addButton(withTitle: "Cancel")
+
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 360, height: 24))
+        field.stringValue = note.title
+        field.placeholderString = "File name"
+        alert.accessoryView = field
+        alert.window.initialFirstResponder = field
+
+        NSApp.activate(ignoringOtherApps: true)
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        do {
+            let updated = try noteManager.renameNote(noteId, to: field.stringValue)
+            windowManager.getWindowController(for: noteId)?.refreshTitle()
+            windowManager.stackWindowController?.refreshFromModel()
+            print("[AppCoordinator] Note renamed: \(updated.title)")
+        } catch {
+            let failure = NSAlert()
+            failure.messageText = "Could not rename the note"
+            failure.informativeText = error.localizedDescription
+            failure.alertStyle = .warning
+            failure.addButton(withTitle: "OK")
+            failure.runModal()
         }
     }
 

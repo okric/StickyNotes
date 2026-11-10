@@ -109,7 +109,7 @@ class NoteWindowController: NSWindowController, NSWindowDelegate, WebViewHost {
             panel.removeTitlebarAccessoryViewController(at: 0)
         }
 
-        let container = TitlebarControlsView(frame: NSRect(x: 0, y: 0, width: 190, height: 22))
+        let container = TitlebarControlsView(frame: NSRect(x: 0, y: 0, width: 214, height: 22))
         var xOffset: CGFloat = 4
 
         // Opacity slider
@@ -144,7 +144,25 @@ class NoteWindowController: NSWindowController, NSWindowDelegate, WebViewHost {
         pin.toolTip = "Always on Top"
         pinButton = pin
         container.addSubview(pin)
-        xOffset += 26
+        xOffset += 24
+
+        // Rename
+        let rename = NSButton(frame: NSRect(x: xOffset, y: 2, width: 18, height: 18))
+        rename.wantsLayer = true
+        rename.bezelStyle = .regularSquare
+        rename.isBordered = false
+        rename.title = ""
+        if let img = NSImage(systemSymbolName: "pencil", accessibilityDescription: "Rename")?
+            .withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 11, weight: .medium)) {
+            rename.image = img
+        }
+        rename.contentTintColor = .labelColor
+        rename.imagePosition = .imageOnly
+        rename.target = self
+        rename.action = #selector(renameClicked)
+        rename.toolTip = "Rename File"
+        container.addSubview(rename)
+        xOffset += 24
 
         // Color dots
         for color in NoteColor.allCases {
@@ -212,6 +230,10 @@ class NoteWindowController: NSWindowController, NSWindowDelegate, WebViewHost {
         pinButton?.alphaValue = note.alwaysOnTop ? 1.0 : 0.25
     }
 
+    @objc private func renameClicked() {
+        coordinator?.promptRenameNote(noteId: note.id)
+    }
+
     private func setupContent() {
         guard let panel = window as? NSPanel else { return }
 
@@ -254,6 +276,14 @@ class NoteWindowController: NSWindowController, NSWindowDelegate, WebViewHost {
         label.drawsBackground = false
         titleLabel = label
         strip.addSubview(label)
+
+        let renameGesture = NSClickGestureRecognizer(
+            target: self,
+            action: #selector(renameClicked)
+        )
+        renameGesture.numberOfClicksRequired = 2
+        strip.addGestureRecognizer(renameGesture)
+
         container.addSubview(strip)
 
         // Titlebar cursor overlay
@@ -329,6 +359,14 @@ class NoteWindowController: NSWindowController, NSWindowDelegate, WebViewHost {
         guard let current = coordinator?.noteManager.getNote(note.id) else { return }
         note = current
         SharedWebViewManager.shared.setReadOnly(RemoteWriteAccess.isReadOnly(current))
+    }
+
+    /// Pick up a renamed file from the model.
+    func refreshTitle() {
+        guard let current = coordinator?.noteManager.getNote(note.id) else { return }
+        note.title = current.title
+        note.path = current.path
+        titleLabel?.stringValue = current.title
     }
 
     /// Re-apply Settings fonts after the user changes them.

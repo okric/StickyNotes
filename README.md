@@ -21,8 +21,9 @@ A native macOS sticky note app with Obsidian-style markdown live preview, built 
 
 ### Sticky Note Experience
 - **Plain Markdown files**: every note is a `.md` file in a folder you choose (Obsidian vaults work)
-- **Fixed filename line**: every note shows its filename (without `.md`) above the body, in a font chosen in Settings; it is not part of the Markdown and cannot be edited or removed
-- **Note stacks**: notes added to the notes folder pile into the default stack — one window with the front sheet on top, the sheets underneath showing at its edge
+- **Fixed filename line**: every note shows its filename (without `.md`) above the body, in a font chosen in Settings; it is not part of the Markdown and cannot be edited as text
+- **Rename**: double-click the filename, use the pencil button, or press Cmd+Shift+R. The `.md` file is renamed in place
+- **Note stacks**: files added to the notes folder from outside pile into the default stack, one window with the front sheet on top and the sheets underneath showing at its edge. Cmd+N creates a placed note instead; drag it in or use Move Note to Stack.
   - Hover the stack for the chevrons: they cycle the front sheet in creation order
   - Hold ⌥ and drag the stack to pull the front note out into a normal window
   - Put a placed note back by dragging it onto the stack, or use File > Move Note to Stack

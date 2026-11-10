@@ -20,8 +20,8 @@ All notable changes to MD Sticky Notes will be documented in this file.
   only when the last note is gone
 - Stack membership lives only in `index.json` (`stackID`); the Markdown file is
   unchanged, so a stacked note is a normal note on disk
-- Existing placed notes keep their positions. A stack appears when a new note
-  is created or a file is added to the notes folder
+- Existing placed notes keep their positions. Cmd+N creates a placed note;
+  files added to the notes folder from outside join the stack
 - The stack owns color, opacity, pin, size, position, and minimized state;
   switching sheets never changes its look, and a pulled-out note copies those
   properties
@@ -29,6 +29,8 @@ All notable changes to MD Sticky Notes will be documented in this file.
   not Markdown, cannot be edited or removed, and always uses the selected title
   font at one size
 - Settings adds separate font choices for the note body and the filename line
+- Rename a note by double-clicking its filename, the pencil button, or
+  Cmd+Shift+R; the Markdown file is renamed in place and open windows follow
 - Note controls (opacity, pin, colors) appear only while the note or stack
   window is focused
 
