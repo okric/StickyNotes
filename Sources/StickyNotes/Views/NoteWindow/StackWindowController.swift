@@ -24,11 +24,15 @@ final class StackWindowController: NSWindowController, NSWindowDelegate, WebView
     private var cardView: NSView!
     private var contentContainer: NSView!
     private var badgeView: StackBadgeView!
+    private var titleLabel: NSTextField?
+    private var titleStripView: NSView?
     private var chevronUp: NSButton!
     private var chevronDown: NSButton!
+    private var dropHighlightView: NSView?
     private var pinButton: NSButton?
     private var colorButtons: [NoteColor: NSButton] = [:]
     private var opacitySlider: NSSlider?
+    private var titlebarControlsView: NSView?
     private var snapshotView: NSImageView?
     private var isHovering = false
 
@@ -38,6 +42,12 @@ final class StackWindowController: NSWindowController, NSWindowDelegate, WebView
     private var tearOutNoteID: UUID?
 
     var frontNoteId: UUID { frontNote.id }
+
+    // Appearance belongs to the stack. Optional fields are seeded from the
+    // front note for stack.json written before these fields existed.
+    private var stackColorTheme: String { stack.colorTheme ?? frontNote.colorTheme }
+    private var stackOpacity: Double { stack.opacity ?? frontNote.opacity }
+    private var stackAlwaysOnTop: Bool { stack.alwaysOnTop ?? frontNote.alwaysOnTop }
 
     // MARK: - Initialization
 
@@ -80,6 +90,15 @@ final class StackWindowController: NSWindowController, NSWindowDelegate, WebView
         if stack.size == nil {
             coordinator.noteManager.updateStackSize(cardSize)
         }
+        if stack.colorTheme == nil || stack.opacity == nil
+            || stack.alwaysOnTop == nil || stack.isMinimized == nil {
+            coordinator.noteManager.updateStackAppearance(
+                colorTheme: stackColorTheme,
+                opacity: stackOpacity,
+                alwaysOnTop: stackAlwaysOnTop,
+                isMinimized: stack.isMinimized ?? false
+            )
+        }
     }
 
     required init?(coder: NSCoder) {
@@ -94,7 +113,7 @@ final class StackWindowController: NSWindowController, NSWindowDelegate, WebView
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = true
-        panel.alphaValue = CGFloat(frontNote.opacity)
+        panel.alphaValue = CGFloat(stackOpacity)
         panel.title = "Sticky Stack"
         panel.delegate = self
         panel.minSize = NSSize(
@@ -104,9 +123,9 @@ final class StackWindowController: NSWindowController, NSWindowDelegate, WebView
         panel.titlebarAppearsTransparent = true
         panel.titleVisibility = .hidden
 
-        applyAlwaysOnTop(frontNote.alwaysOnTop)
+        applyAlwaysOnTop(stackAlwaysOnTop)
 
-        if frontNote.isMinimized {
+        if stack.isMinimized == true {
             panel.miniaturize(nil)
         }
     }
@@ -122,7 +141,7 @@ final class StackWindowController: NSWindowController, NSWindowDelegate, WebView
         let slider = NSSlider(frame: NSRect(x: xOffset, y: 4, width: 50, height: 14))
         slider.minValue = 0.2
         slider.maxValue = 1.0
-        slider.doubleValue = frontNote.opacity
+        slider.doubleValue = stackOpacity
         slider.target = self
         slider.action = #selector(opacityChanged(_:))
         slider.controlSize = .mini
@@ -142,7 +161,7 @@ final class StackWindowController: NSWindowController, NSWindowDelegate, WebView
             pin.image = img
         }
         pin.contentTintColor = .labelColor
-        pin.alphaValue = frontNote.alwaysOnTop ? 1.0 : 0.25
+        pin.alphaValue = stackAlwaysOnTop ? 1.0 : 0.25
         pin.imagePosition = .imageOnly
         pin.target = self
         pin.action = #selector(toggleAlwaysOnTop)
@@ -156,8 +175,8 @@ final class StackWindowController: NSWindowController, NSWindowDelegate, WebView
             dot.wantsLayer = true
             dot.layer?.cornerRadius = 6
             dot.layer?.backgroundColor = color.color.cgColor
-            dot.layer?.borderWidth = color.rawValue == frontNote.colorTheme ? 2 : 1
-            dot.layer?.borderColor = NSColor(white: 0, alpha: color.rawValue == frontNote.colorTheme ? 0.4 : 0.12).cgColor
+            dot.layer?.borderWidth = color.rawValue == stackColorTheme ? 2 : 1
+            dot.layer?.borderColor = NSColor(white: 0, alpha: color.rawValue == stackColorTheme ? 0.4 : 0.12).cgColor
             dot.isBordered = false
             dot.title = ""
             dot.target = self
@@ -167,6 +186,10 @@ final class StackWindowController: NSWindowController, NSWindowDelegate, WebView
             container.addSubview(dot)
             xOffset += 16
         }
+
+        // Controls appear only while the stack window is key.
+        container.isHidden = true
+        titlebarControlsView = container
 
         let accessory = NSTitlebarAccessoryViewController()
         accessory.view = container
@@ -182,7 +205,7 @@ final class StackWindowController: NSWindowController, NSWindowDelegate, WebView
         let root = StackRootView(frame: NSRect(origin: .zero, size: contentRect.size))
         root.autoresizingMask = [.width, .height]
         root.deckDepth = Self.deckDepth
-        root.cardColor = NoteColor.from(frontNote.colorTheme).color
+        root.cardColor = NoteColor.from(stackColorTheme).color
         root.stackedCount = coordinator?.noteManager.stackedNotes.count ?? 1
         root.onHoverChanged = { [weak self] hovering in
             self?.setChevronsVisible(hovering)
@@ -192,9 +215,9 @@ final class StackWindowController: NSWindowController, NSWindowDelegate, WebView
 
         let card = NSView(frame: root.cardFrame)
         card.wantsLayer = true
-        card.layer?.cornerRadius = 6
+        card.layer?.cornerRadius = 3
         card.layer?.masksToBounds = true
-        card.layer?.backgroundColor = NoteColor.from(frontNote.colorTheme).color.cgColor
+        card.layer?.backgroundColor = NoteColor.from(stackColorTheme).color.cgColor
         cardView = card
         root.cardView = card
         root.addSubview(card)
@@ -206,6 +229,34 @@ final class StackWindowController: NSWindowController, NSWindowDelegate, WebView
         content.wantsLayer = true
         contentContainer = content
         card.addSubview(content)
+
+        let titleStrip: CGFloat = 30
+        let strip = NSView(
+            frame: NSRect(
+                x: 0,
+                y: card.bounds.height - 28 - titleStrip,
+                width: card.bounds.width,
+                height: titleStrip
+            )
+        )
+        strip.autoresizingMask = [.width, .minYMargin]
+        strip.wantsLayer = true
+        strip.layer?.backgroundColor = NoteColor.from(stackColorTheme).color.cgColor
+        titleStripView = strip
+
+        let label = NSTextField(labelWithString: frontNote.title)
+        label.frame = NSRect(x: 12, y: 5, width: strip.bounds.width - 70, height: 20)
+        label.autoresizingMask = [.width]
+        label.font = NoteFont.titleFont(family: coordinator?.settings.titleFontFamily)
+        label.textColor = NSColor(white: 0.1, alpha: 0.85)
+        label.lineBreakMode = .byTruncatingTail
+        label.isEditable = false
+        label.isSelectable = false
+        label.isBordered = false
+        label.drawsBackground = false
+        titleLabel = label
+        strip.addSubview(label)
+        card.addSubview(strip)
 
         let badge = StackBadgeView(frame: NSRect(x: 10, y: 8, width: 46, height: 18))
         badge.autoresizingMask = [.maxXMargin, .maxYMargin]
@@ -252,6 +303,16 @@ final class StackWindowController: NSWindowController, NSWindowDelegate, WebView
         overlay.onOptionDragMoved = { [weak self] delta in self?.moveTearOut(by: delta) }
         overlay.onOptionDragEnded = { [weak self] in self?.endTearOut() }
         card.addSubview(overlay)
+
+        let highlight = PassthroughView(frame: card.bounds)
+        highlight.autoresizingMask = [.width, .height]
+        highlight.wantsLayer = true
+        highlight.layer?.cornerRadius = 3
+        highlight.layer?.borderWidth = 4
+        highlight.layer?.borderColor = NSColor.controlAccentColor.withAlphaComponent(0.95).cgColor
+        highlight.isHidden = true
+        dropHighlightView = highlight
+        card.addSubview(highlight)
 
         showTextPreview()
     }
@@ -323,16 +384,18 @@ final class StackWindowController: NSWindowController, NSWindowDelegate, WebView
 
     /// Update colors, badge and titlebar controls without touching the editor.
     private func refreshAppearance() {
-        let color = NoteColor.from(frontNote.colorTheme)
+        titleLabel?.stringValue = frontNote.title
+        let color = NoteColor.from(stackColorTheme)
         cardView?.layer?.backgroundColor = color.color.cgColor
+        titleStripView?.layer?.backgroundColor = color.color.cgColor
         rootView?.cardColor = color.color
         rootView?.needsDisplay = true
-        window?.alphaValue = CGFloat(frontNote.opacity)
+        window?.alphaValue = CGFloat(stackOpacity)
 
-        opacitySlider?.doubleValue = frontNote.opacity
-        pinButton?.alphaValue = frontNote.alwaysOnTop ? 1.0 : 0.25
+        opacitySlider?.doubleValue = stackOpacity
+        pinButton?.alphaValue = stackAlwaysOnTop ? 1.0 : 0.25
         for (theme, button) in colorButtons {
-            let selected = theme.rawValue == frontNote.colorTheme
+            let selected = theme.rawValue == stackColorTheme
             button.layer?.borderWidth = selected ? 2 : 1
             button.layer?.borderColor = NSColor(white: 0, alpha: selected ? 0.4 : 0.12).cgColor
         }
@@ -375,10 +438,11 @@ final class StackWindowController: NSWindowController, NSWindowDelegate, WebView
         chevronDown?.isHidden = !visible
     }
 
-    /// Apply the front note's look and, optionally, put it in the shared editor.
+    /// Apply the stack's look and, optionally, put the front sheet in the shared editor.
     private func applyFrontNote(switchEditor: Bool) {
+        titleLabel?.stringValue = frontNote.title
         refreshAppearance()
-        applyAlwaysOnTop(frontNote.alwaysOnTop)
+        applyAlwaysOnTop(stackAlwaysOnTop)
 
         if hasWebView {
             let manager = SharedWebViewManager.shared
@@ -387,7 +451,7 @@ final class StackWindowController: NSWindowController, NSWindowDelegate, WebView
             }
             manager.webView.callAsyncJavaScript(
                 "window.setNoteColor(colorTheme)",
-                arguments: ["colorTheme": frontNote.colorTheme],
+                arguments: ["colorTheme": stackColorTheme],
                 in: nil,
                 in: .page,
                 completionHandler: nil
@@ -415,16 +479,17 @@ final class StackWindowController: NSWindowController, NSWindowDelegate, WebView
 
     @objc private func colorDotClicked(_ sender: NSButton) {
         guard let color = colorButtons.first(where: { $0.value === sender })?.key else { return }
-        frontNote.colorTheme = color.rawValue
+        stack.colorTheme = color.rawValue
+        coordinator?.noteManager.updateStackAppearance(colorTheme: color.rawValue)
         for (theme, button) in colorButtons {
             let selected = theme == color
             button.layer?.borderWidth = selected ? 2 : 1
             button.layer?.borderColor = NSColor(white: 0, alpha: selected ? 0.4 : 0.12).cgColor
         }
         cardView.layer?.backgroundColor = color.color.cgColor
+        titleStripView?.layer?.backgroundColor = color.color.cgColor
         rootView.cardColor = color.color
         rootView.needsDisplay = true
-        coordinator?.changeNoteColor(noteId: frontNote.id, colorTheme: color.rawValue)
 
         if hasWebView {
             SharedWebViewManager.shared.webView.callAsyncJavaScript(
@@ -439,30 +504,35 @@ final class StackWindowController: NSWindowController, NSWindowDelegate, WebView
 
     @objc private func opacityChanged(_ sender: NSSlider) {
         let opacity = sender.doubleValue
-        frontNote.opacity = opacity
+        stack.opacity = opacity
         window?.alphaValue = CGFloat(opacity)
-        coordinator?.setNoteOpacity(noteId: frontNote.id, opacity: opacity)
+        coordinator?.noteManager.updateStackAppearance(opacity: opacity)
     }
 
     @objc private func toggleAlwaysOnTop() {
-        frontNote.alwaysOnTop.toggle()
-        applyAlwaysOnTop(frontNote.alwaysOnTop)
-        coordinator?.setNoteAlwaysOnTop(
-            noteId: frontNote.id,
-            alwaysOnTop: frontNote.alwaysOnTop
-        )
-        pinButton?.alphaValue = frontNote.alwaysOnTop ? 1.0 : 0.25
+        let value = !stackAlwaysOnTop
+        stack.alwaysOnTop = value
+        applyAlwaysOnTop(value)
+        coordinator?.noteManager.updateStackAppearance(alwaysOnTop: value)
+        pinButton?.alphaValue = value ? 1.0 : 0.25
     }
 
     /// Highlight the stack while a placed note is dragged over it.
     func setDropHighlight(_ highlighted: Bool) {
-        rootView?.isDropTarget = highlighted
+        dropHighlightView?.isHidden = !highlighted
     }
 
     // MARK: - External updates (menus, folder sync)
 
+    func refreshFonts() {
+        titleLabel?.font = NoteFont.titleFont(family: coordinator?.settings.titleFontFamily)
+        if !hasWebView {
+            showTextPreview()
+        }
+    }
+
     func applyColorTheme(_ theme: String) {
-        frontNote.colorTheme = theme
+        stack.colorTheme = theme
         refreshAppearance()
         if hasWebView {
             SharedWebViewManager.shared.webView.callAsyncJavaScript(
@@ -476,19 +546,23 @@ final class StackWindowController: NSWindowController, NSWindowDelegate, WebView
     }
 
     func applyOpacity(_ opacity: Double) {
-        frontNote.opacity = opacity
+        stack.opacity = opacity
         window?.alphaValue = CGFloat(opacity)
         opacitySlider?.doubleValue = opacity
     }
 
     func applyAlwaysOnTopSetting(_ alwaysOnTop: Bool) {
-        frontNote.alwaysOnTop = alwaysOnTop
+        stack.alwaysOnTop = alwaysOnTop
         applyAlwaysOnTop(alwaysOnTop)
         pinButton?.alphaValue = alwaysOnTop ? 1.0 : 0.25
     }
 
     func applyExternalUpdate(content: String) {
         frontNote.content = content
+        if let current = coordinator?.noteManager.getNote(frontNote.id) {
+            frontNote.title = current.title
+            titleLabel?.stringValue = current.title
+        }
         SharedWebViewManager.shared.invalidateCachedState(for: frontNote.id)
         guard hasWebView else {
             showTextPreview()
@@ -574,7 +648,7 @@ final class StackWindowController: NSWindowController, NSWindowDelegate, WebView
         textView.isEditable = false
         textView.isSelectable = false
         textView.drawsBackground = false
-        textView.textContainerInset = NSSize(width: 12, height: 32)
+        textView.textContainerInset = NSSize(width: 12, height: 62)
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false
         textView.autoresizingMask = [.width]
@@ -589,7 +663,12 @@ final class StackWindowController: NSWindowController, NSWindowDelegate, WebView
             width: contentSize.width,
             height: CGFloat.greatestFiniteMagnitude
         )
-        textView.textStorage?.setAttributedString(MarkdownPreview.attributedString(for: content))
+        textView.textStorage?.setAttributedString(
+            MarkdownPreview.attributedString(
+                for: content,
+                fontFamily: coordinator?.settings.noteFontFamily
+            )
+        )
 
         scrollView.documentView = textView
         contentContainer.addSubview(scrollView)
@@ -626,7 +705,7 @@ final class StackWindowController: NSWindowController, NSWindowDelegate, WebView
             defer: false
         )
         ghost.isOpaque = false
-        ghost.backgroundColor = NoteColor.from(frontNote.colorTheme).color.withAlphaComponent(0.92)
+        ghost.backgroundColor = NoteColor.from(stackColorTheme).color.withAlphaComponent(0.92)
         ghost.hasShadow = true
         ghost.level = panel.level
         ghost.ignoresMouseEvents = true
@@ -665,7 +744,12 @@ final class StackWindowController: NSWindowController, NSWindowDelegate, WebView
     // MARK: - NSWindowDelegate
 
     func windowDidBecomeKey(_ notification: Notification) {
+        titlebarControlsView?.isHidden = false
         attachWebView()
+    }
+
+    func windowDidResignKey(_ notification: Notification) {
+        titlebarControlsView?.isHidden = true
     }
 
     func windowDidResize(_ notification: Notification) {
@@ -691,6 +775,14 @@ final class StackWindowController: NSWindowController, NSWindowDelegate, WebView
                 ScreenGeometry.offset(of: frame.origin, on: $0)
             }
         )
+    }
+
+    func windowDidMiniaturize(_ notification: Notification) {
+        coordinator?.noteManager.updateStackAppearance(isMinimized: true)
+    }
+
+    func windowDidDeminiaturize(_ notification: Notification) {
+        coordinator?.noteManager.updateStackAppearance(isMinimized: false)
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
@@ -756,10 +848,6 @@ final class StackRootView: NSView {
         didSet { needsDisplay = true }
     }
 
-    /// A placed note is being dragged over the stack.
-    var isDropTarget = false {
-        didSet { needsDisplay = true }
-    }
     weak var cardView: NSView?
     var onHoverChanged: ((Bool) -> Void)?
 
@@ -795,19 +883,9 @@ final class StackRootView: NSView {
                 dx: CGFloat(index) * (deckDepth / 3),
                 dy: -CGFloat(index) * (deckDepth / 3)
             )
-            NSBezierPath(roundedRect: rect, xRadius: 6, yRadius: 6).fill()
+            NSBezierPath(roundedRect: rect, xRadius: 3, yRadius: 3).fill()
         }
 
-        if isDropTarget {
-            NSColor.controlAccentColor.setStroke()
-            let path = NSBezierPath(
-                roundedRect: cardView.frame.insetBy(dx: 1.5, dy: 1.5),
-                xRadius: 7,
-                yRadius: 7
-            )
-            path.lineWidth = 3
-            path.stroke()
-        }
     }
 
     override func updateTrackingAreas() {
@@ -832,6 +910,11 @@ final class StackRootView: NSView {
     override func mouseExited(with event: NSEvent) {
         onHoverChanged?(false)
     }
+}
+
+/// Overlay that paints but never takes clicks.
+final class PassthroughView: NSView {
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
 /// Small "N" badge showing how many sheets are in the stack.

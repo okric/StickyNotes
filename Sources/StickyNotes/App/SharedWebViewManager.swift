@@ -108,6 +108,7 @@ class SharedWebViewManager {
     func markReady() {
         isReady = true
         print("[SharedWebViewManager] Editor is ready")
+        applyNoteFont(coordinator?.settings.noteFontFamily)
 
         // Pre-render inactive notes while WebView is still hidden (alpha=0)
         preRenderInactiveNotes { [weak self] in
@@ -226,6 +227,17 @@ class SharedWebViewManager {
                 self.preRenderNext(notes: notes, index: index + 1, completion: completion)
             }
         }
+    }
+
+    /// Apply the Settings font family to the editor body.
+    func applyNoteFont(_ family: String?) {
+        webView.callAsyncJavaScript(
+            "window.setNoteFont(fontFamily)",
+            arguments: ["fontFamily": NoteFont.bodyCSS(family: family)],
+            in: nil,
+            in: .page,
+            completionHandler: nil
+        )
     }
 
     /// Toggle editing in the editor (remote notes are read-only for now).
@@ -390,6 +402,7 @@ class SharedWebViewManager {
             in: .page,
             completionHandler: nil
         )
+        applyNoteFont(coordinator?.settings.noteFontFamily)
 
         print("[SharedWebViewManager] Loaded note: \(noteId)")
     }

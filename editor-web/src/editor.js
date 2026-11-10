@@ -845,8 +845,8 @@ const editorTheme = EditorView.theme({
     color: '#1a1a1a',
   },
   '.cm-content': {
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif',
-    padding: '32px 16px 16px 16px',  // top: 32px for titlebar spacing
+    fontFamily: 'var(--note-font, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif)',
+    padding: '62px 16px 16px 16px',  // titlebar (32) + native filename strip (30)
     minHeight: '100%',
     caretColor: '#5c6ac4',
   },
@@ -1113,7 +1113,7 @@ const editorTheme = EditorView.theme({
   },
   '.cm-panels-top.cm-panels-top': {
     borderBottom: 'none',
-    marginTop: '28px',  // below titlebar
+    marginTop: '4px',  // below the native filename strip
   },
   '.cm-panel.cm-search': {
     padding: '6px 10px',
@@ -1345,6 +1345,15 @@ window.setNoteColor = function (color) {
   const mask = document.getElementById('titlebar-mask');
   if (mask) {
     mask.style.backgroundColor = noteColorHex[color] || noteColorHex.yellow;
+  }
+};
+
+// Update the body font family from Settings.
+window.setNoteFont = function (fontFamily) {
+  if (fontFamily) {
+    document.documentElement.style.setProperty('--note-font', fontFamily);
+  } else {
+    document.documentElement.style.removeProperty('--note-font');
   }
 };
 

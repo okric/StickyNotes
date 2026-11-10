@@ -40,6 +40,23 @@ struct SettingsView: View {
 
             Divider()
 
+            Text("Fonts")
+                .font(.headline)
+
+            Picker("Note body", selection: noteFontBinding) {
+                ForEach(NoteFont.choices, id: \.self) { family in
+                    Text(family)
+                }
+            }
+
+            Picker("Note title", selection: titleFontBinding) {
+                ForEach(NoteFont.choices, id: \.self) { family in
+                    Text(family)
+                }
+            }
+
+            Divider()
+
             Text("Notes Server")
                 .font(.headline)
 
@@ -83,6 +100,20 @@ struct SettingsView: View {
         .padding(20)
         .frame(width: 540)
         .onAppear { refreshTokenStatus() }
+    }
+
+    private var noteFontBinding: Binding<String> {
+        Binding(
+            get: { settings.noteFontFamily ?? "System" },
+            set: { settings.setNoteFontFamily($0 == "System" ? nil : $0) }
+        )
+    }
+
+    private var titleFontBinding: Binding<String> {
+        Binding(
+            get: { settings.titleFontFamily ?? "System" },
+            set: { settings.setTitleFontFamily($0 == "System" ? nil : $0) }
+        )
     }
 
     private func saveToken() {

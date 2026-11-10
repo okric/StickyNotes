@@ -21,6 +21,14 @@ struct NoteStack: Codable, Equatable {
     /// switching sheets, so the window never jumps; `nil` falls back to the
     /// front note's size (older stack.json, or first launch).
     var size: CGSize?
+
+    /// Appearance is stack-level. Member notes ignore their own values while
+    /// stacked and inherit these when they are pulled out.
+    var colorTheme: String?
+    var opacity: Double?
+    var alwaysOnTop: Bool?
+    var isMinimized: Bool?
+
     var screenUUID: String?
     var screenOffset: CGPoint?
 
@@ -31,6 +39,10 @@ struct NoteStack: Codable, Equatable {
         id: String = NoteStack.defaultID,
         position: CGPoint,
         size: CGSize? = nil,
+        colorTheme: String? = nil,
+        opacity: Double? = nil,
+        alwaysOnTop: Bool? = nil,
+        isMinimized: Bool? = nil,
         screenUUID: String? = nil,
         screenOffset: CGPoint? = nil,
         frontNoteID: UUID? = nil
@@ -38,15 +50,33 @@ struct NoteStack: Codable, Equatable {
         self.id = id
         self.position = position
         self.size = size
+        self.colorTheme = colorTheme
+        self.opacity = opacity
+        self.alwaysOnTop = alwaysOnTop
+        self.isMinimized = isMinimized
         self.screenUUID = screenUUID
         self.screenOffset = screenOffset
         self.frontNoteID = frontNoteID
     }
 
+    /// A new stack adopts the seed note's appearance.
+    init(seeding note: Note, at position: CGPoint) {
+        self.init(
+            position: position,
+            size: note.size,
+            colorTheme: note.colorTheme,
+            opacity: note.opacity,
+            alwaysOnTop: note.alwaysOnTop,
+            isMinimized: false,
+            frontNoteID: note.id
+        )
+    }
+
     // MARK: - Codable
 
     enum CodingKeys: String, CodingKey {
-        case id, position, size, screenUUID, screenOffset, frontNoteID
+        case id, position, size, colorTheme, opacity, alwaysOnTop, isMinimized
+        case screenUUID, screenOffset, frontNoteID
     }
 
     init(from decoder: Decoder) throws {
@@ -65,6 +95,11 @@ struct NoteStack: Codable, Equatable {
             size = nil
         }
 
+        colorTheme = try container.decodeIfPresent(String.self, forKey: .colorTheme)
+        opacity = try container.decodeIfPresent(Double.self, forKey: .opacity)
+        alwaysOnTop = try container.decodeIfPresent(Bool.self, forKey: .alwaysOnTop)
+        isMinimized = try container.decodeIfPresent(Bool.self, forKey: .isMinimized)
+
         screenUUID = try container.decodeIfPresent(String.self, forKey: .screenUUID)
         if let offsetDict = try container.decodeIfPresent([String: Double].self, forKey: .screenOffset) {
             screenOffset = CGPoint(x: offsetDict["x"] ?? 0, y: offsetDict["y"] ?? 0)
@@ -82,6 +117,10 @@ struct NoteStack: Codable, Equatable {
                 forKey: .size
             )
         }
+        try container.encodeIfPresent(colorTheme, forKey: .colorTheme)
+        try container.encodeIfPresent(opacity, forKey: .opacity)
+        try container.encodeIfPresent(alwaysOnTop, forKey: .alwaysOnTop)
+        try container.encodeIfPresent(isMinimized, forKey: .isMinimized)
         try container.encodeIfPresent(screenUUID, forKey: .screenUUID)
         if let screenOffset {
             try container.encode(

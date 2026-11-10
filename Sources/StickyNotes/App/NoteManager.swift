@@ -142,24 +142,35 @@ class NoteManager: ObservableObject {
     @discardableResult
     func ensureStack(
         at position: CGPoint,
-        size: CGSize? = nil,
+        seedNote: Note? = nil,
         frontNoteID: UUID? = nil
     ) -> NoteStack {
         if var stack {
             if let frontNoteID { stack.frontNoteID = frontNoteID }
-            if stack.size == nil { stack.size = size }
+            seed(&stack, from: seedNote)
             self.stack = stack
             store.saveStack(stack)
             return stack
         }
-        let stack = NoteStack(
-            position: position,
-            size: size,
-            frontNoteID: frontNoteID
-        )
+        let stack: NoteStack
+        if let seedNote {
+            stack = NoteStack(seeding: seedNote, at: position)
+        } else {
+            stack = NoteStack(position: position, frontNoteID: frontNoteID)
+        }
         self.stack = stack
         store.saveStack(stack)
         return stack
+    }
+
+    /// Fill stack-level appearance only when it is missing (older stack.json).
+    private func seed(_ stack: inout NoteStack, from note: Note?) {
+        guard let note else { return }
+        if stack.size == nil { stack.size = note.size }
+        if stack.colorTheme == nil { stack.colorTheme = note.colorTheme }
+        if stack.opacity == nil { stack.opacity = note.opacity }
+        if stack.alwaysOnTop == nil { stack.alwaysOnTop = note.alwaysOnTop }
+        if stack.isMinimized == nil { stack.isMinimized = false }
     }
 
     /// Remember where the stack window is. Called from `windowDidMove` only.
@@ -188,6 +199,32 @@ class NoteManager: ObservableObject {
         store.saveStack(stack)
     }
 
+    /// Stack-level appearance (color, opacity, pin, minimized).
+    func updateStackAppearance(
+        colorTheme: String? = nil,
+        opacity: Double? = nil,
+        alwaysOnTop: Bool? = nil,
+        isMinimized: Bool? = nil
+    ) {
+        guard var stack else { return }
+        var changed = false
+        if let colorTheme, stack.colorTheme != colorTheme {
+            stack.colorTheme = colorTheme; changed = true
+        }
+        if let opacity, stack.opacity != opacity {
+            stack.opacity = opacity; changed = true
+        }
+        if let alwaysOnTop, stack.alwaysOnTop != alwaysOnTop {
+            stack.alwaysOnTop = alwaysOnTop; changed = true
+        }
+        if let isMinimized, stack.isMinimized != isMinimized {
+            stack.isMinimized = isMinimized; changed = true
+        }
+        guard changed else { return }
+        self.stack = stack
+        store.saveStack(stack)
+    }
+
     /// Put a placed note back into the default stack and make it the front sheet.
     @discardableResult
     func stackNote(_ noteId: UUID) -> Note? {
@@ -197,7 +234,7 @@ class NoteManager: ObservableObject {
         guard !notes[index].isStacked else { return notes[index] }
 
         let stackPosition = stack?.position ?? notes[index].position
-        ensureStack(at: stackPosition, size: notes[index].size, frontNoteID: noteId)
+        ensureStack(at: stackPosition, seedNote: notes[index], frontNoteID: noteId)
 
         notes[index].stackID = NoteStack.defaultID
         notes[index].position = stackPosition
@@ -224,6 +261,15 @@ class NoteManager: ObservableObject {
         notes[index].position = position
         notes[index].screenUUID = screenUUID
         notes[index].screenOffset = screenOffset
+
+        // The note inherits the stack's appearance now that it stands alone.
+        if let stack {
+            if let size = stack.size { notes[index].size = size }
+            if let colorTheme = stack.colorTheme { notes[index].colorTheme = colorTheme }
+            if let opacity = stack.opacity { notes[index].opacity = opacity }
+            if let alwaysOnTop = stack.alwaysOnTop { notes[index].alwaysOnTop = alwaysOnTop }
+        }
+        notes[index].isMinimized = false
         notes[index].updateModificationDate()
         store.saveIndex(notes)
         reconcileStack()
@@ -325,7 +371,7 @@ class NoteManager: ObservableObject {
         if joinsStack {
             let stack = ensureStack(
                 at: position,
-                size: note.size,
+                seedNote: note,
                 frontNoteID: note.id
             )
             note.position = stack.position
@@ -506,7 +552,7 @@ class NoteManager: ObservableObject {
             if stack == nil {
                 ensureStack(
                     at: stackPosition,
-                    size: added.first?.size,
+                    seedNote: added.first,
                     frontNoteID: added.first?.id
                 )
             }
@@ -579,7 +625,7 @@ class NoteManager: ObservableObject {
             )
             let stack = ensureStack(
                 at: position,
-                size: note.size,
+                seedNote: note,
                 frontNoteID: note.id
             )
             note.position = stack.position

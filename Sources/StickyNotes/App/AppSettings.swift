@@ -11,6 +11,10 @@ final class AppSettings: ObservableObject {
     /// One-shot flag: legacy UserDefaults notes have been imported.
     @Published private(set) var didMigrateLegacyNotes: Bool
 
+    /// Font families for note bodies and the fixed filename line. `nil` = system.
+    @Published private(set) var noteFontFamily: String?
+    @Published private(set) var titleFontFamily: String?
+
     private let store: NotesStore
 
     init(store: NotesStore) {
@@ -18,6 +22,8 @@ final class AppSettings: ObservableObject {
         let data = store.loadSettings()
         self.defaultFolderPath = data.defaultFolderPath
         self.didMigrateLegacyNotes = data.didMigrateLegacyNotes
+        self.noteFontFamily = data.noteFontFamily
+        self.titleFontFamily = data.titleFontFamily
     }
 
     var defaultFolderURL: URL? {
@@ -73,6 +79,18 @@ final class AppSettings: ObservableObject {
         NSWorkspace.shared.activateFileViewerSelecting([url])
     }
 
+    func setNoteFontFamily(_ family: String?) {
+        guard noteFontFamily != family else { return }
+        noteFontFamily = family
+        persist()
+    }
+
+    func setTitleFontFamily(_ family: String?) {
+        guard titleFontFamily != family else { return }
+        titleFontFamily = family
+        persist()
+    }
+
     func markLegacyMigrationDone() {
         didMigrateLegacyNotes = true
         persist()
@@ -82,7 +100,9 @@ final class AppSettings: ObservableObject {
         store.saveSettings(
             NotesStore.SettingsData(
                 defaultFolderPath: defaultFolderPath,
-                didMigrateLegacyNotes: didMigrateLegacyNotes
+                didMigrateLegacyNotes: didMigrateLegacyNotes,
+                noteFontFamily: noteFontFamily,
+                titleFontFamily: titleFontFamily
             )
         )
     }

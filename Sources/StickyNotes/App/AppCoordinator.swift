@@ -425,34 +425,35 @@ class AppCoordinator: ObservableObject {
         }
     }
 
-    /// Change a note's color theme
+    /// Change appearance. Member notes take it from the stack, not themselves.
     func changeNoteColor(noteId: UUID, colorTheme: String) {
-        noteManager.updateNoteColor(noteId, colorTheme: colorTheme)
-        if let controller = windowManager.getWindowController(for: noteId) {
-            controller.setColorTheme(colorTheme)
-        } else {
+        if noteManager.getNote(noteId)?.isStacked == true {
+            noteManager.updateStackAppearance(colorTheme: colorTheme)
             windowManager.stackWindowController?.applyColorTheme(colorTheme)
+            return
         }
+        noteManager.updateNoteColor(noteId, colorTheme: colorTheme)
+        windowManager.getWindowController(for: noteId)?.setColorTheme(colorTheme)
     }
 
-    /// Change a note's opacity
     func setNoteOpacity(noteId: UUID, opacity: Double) {
-        noteManager.updateNoteWindow(noteId, opacity: opacity)
-        if let controller = windowManager.getWindowController(for: noteId) {
-            controller.setOpacity(opacity)
-        } else {
+        if noteManager.getNote(noteId)?.isStacked == true {
+            noteManager.updateStackAppearance(opacity: opacity)
             windowManager.stackWindowController?.applyOpacity(opacity)
+            return
         }
+        noteManager.updateNoteWindow(noteId, opacity: opacity)
+        windowManager.getWindowController(for: noteId)?.setOpacity(opacity)
     }
 
-    /// Toggle a note's always-on-top setting
     func setNoteAlwaysOnTop(noteId: UUID, alwaysOnTop: Bool) {
-        noteManager.updateNoteAlwaysOnTop(noteId, alwaysOnTop: alwaysOnTop)
-        if let controller = windowManager.getWindowController(for: noteId) {
-            controller.setAlwaysOnTop(alwaysOnTop)
-        } else {
+        if noteManager.getNote(noteId)?.isStacked == true {
+            noteManager.updateStackAppearance(alwaysOnTop: alwaysOnTop)
             windowManager.stackWindowController?.applyAlwaysOnTopSetting(alwaysOnTop)
+            return
         }
+        noteManager.updateNoteAlwaysOnTop(noteId, alwaysOnTop: alwaysOnTop)
+        windowManager.getWindowController(for: noteId)?.setAlwaysOnTop(alwaysOnTop)
     }
 
     /// The window (note or stack) that owns the shared WebView for a note.
@@ -600,6 +601,27 @@ class AppCoordinator: ObservableObject {
                 self?.startFolderMonitor()
             }
             .store(in: &cancellables)
+
+        settings.$noteFontFamily
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.applyFontPreferences()
+            }
+            .store(in: &cancellables)
+
+        settings.$titleFontFamily
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.applyFontPreferences()
+            }
+            .store(in: &cancellables)
+    }
+
+    private func applyFontPreferences() {
+        SharedWebViewManager.shared.applyNoteFont(settings.noteFontFamily)
+        windowManager.refreshFonts()
     }
 
     /// Open windows for all persisted notes. Stacked notes share one window.

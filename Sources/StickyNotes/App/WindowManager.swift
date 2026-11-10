@@ -126,6 +126,14 @@ class WindowManager: ObservableObject {
         return windowControllers.first(where: { $0.value.window === window })?.key
     }
 
+    /// Re-apply Settings fonts to every open window.
+    func refreshFonts() {
+        for controller in windowControllers.values {
+            controller.refreshFonts()
+        }
+        stackWindowController?.refreshFonts()
+    }
+
     /// Close all windows
     func closeAllWindows() {
         for (noteId, _) in windowControllers {

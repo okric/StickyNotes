@@ -30,12 +30,20 @@ needs_regen() {
 }
 
 if needs_regen; then
-    if ! command -v xcodegen >/dev/null 2>&1; then
+    XCODEGEN_BIN="$(command -v xcodegen || true)"
+    if [ -z "$XCODEGEN_BIN" ] && [ -x /opt/homebrew/bin/xcodegen ]; then
+        XCODEGEN_BIN=/opt/homebrew/bin/xcodegen
+    fi
+    if [ -z "$XCODEGEN_BIN" ]; then
         echo "error: xcodegen not found (brew install xcodegen)" >&2
         exit 1
     fi
-    xcodegen generate >/dev/null
+    "$XCODEGEN_BIN" generate >/dev/null
 fi
+
+# Build the editor bundle before Xcode starts. The pre-build phase can run
+# after the resource copy in practice, which leaves the app one bundle behind.
+"$ROOT/Scripts/build-editor.sh"
 
 XCODE_ARGS=(
     -project "$XCODEPROJ"

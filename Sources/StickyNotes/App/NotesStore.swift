@@ -14,10 +14,19 @@ final class NotesStore {
     struct SettingsData: Codable {
         var defaultFolderPath: String?
         var didMigrateLegacyNotes: Bool
+        var noteFontFamily: String?
+        var titleFontFamily: String?
 
-        init(defaultFolderPath: String? = nil, didMigrateLegacyNotes: Bool = false) {
+        init(
+            defaultFolderPath: String? = nil,
+            didMigrateLegacyNotes: Bool = false,
+            noteFontFamily: String? = nil,
+            titleFontFamily: String? = nil
+        ) {
             self.defaultFolderPath = defaultFolderPath
             self.didMigrateLegacyNotes = didMigrateLegacyNotes
+            self.noteFontFamily = noteFontFamily
+            self.titleFontFamily = titleFontFamily
         }
     }
 

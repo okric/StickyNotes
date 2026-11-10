@@ -11,8 +11,11 @@ enum MarkdownPreview {
     static let baseFontSize: CGFloat = 14
     private static let bodyColor = NSColor(white: 0.1, alpha: 0.85)
 
-    static func attributedString(for markdown: String) -> NSAttributedString {
-        let baseFont = NSFont.systemFont(ofSize: baseFontSize)
+    static func attributedString(
+        for markdown: String,
+        fontFamily: String? = nil
+    ) -> NSAttributedString {
+        let baseFont = NoteFont.font(family: fontFamily, size: baseFontSize)
         let fallback = NSAttributedString(
             string: markdown,
             attributes: [.font: baseFont, .foregroundColor: bodyColor]
@@ -73,7 +76,11 @@ enum MarkdownPreview {
 
             if headerLevel > 0 {
                 let scale: CGFloat = [1.8, 1.5, 1.25, 1.1, 1.05, 1.0][min(headerLevel, 6) - 1]
-                font = NSFont.systemFont(ofSize: (baseFontSize * scale).rounded(), weight: .bold)
+                font = NoteFont.font(
+                    family: fontFamily,
+                    size: (baseFontSize * scale).rounded(),
+                    bold: true
+                )
                 paragraph.paragraphSpacingBefore = 10
                 paragraph.paragraphSpacing = 4
             } else if inCodeBlock {

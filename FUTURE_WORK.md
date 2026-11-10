@@ -57,6 +57,9 @@ Open items:
 - The stack keeps its own size while switching sheets; member notes keep their
   old `size` values until they are pulled out (the pull-out uses the stack's
   current size).
+- Font choices are a curated list, not every installed family; sizes are fixed
+  (body 14, title 15). Renaming the file still does not rename the title or
+  write a heading back to the Markdown.
 
 ## Remote notes (Notes API)
 

@@ -27,6 +27,7 @@
 		8E93750A5B1CFAD30D61EA3D /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDE69F17D9D7F72F804363A8 /* AppSettings.swift */; };
 		90D47C5608DB53CC72FB1C61 /* NoteColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8AD4975D97DF61425F1AE67 /* NoteColor.swift */; };
 		DEC956DE15BF38F713B4F165 /* SharedEditorBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = F859FFD4C697A12E4B17D547 /* SharedEditorBridge.swift */; };
+		E060B0619A2A9703187F123E /* NoteFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EEB46728D7AEAC25773CCA0 /* NoteFont.swift */; };
 		E8030DC50AA43B448A59D746 /* RemoteNotesClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 757760E4AD39F9942A43FB66 /* RemoteNotesClient.swift */; };
 		F6050B41C4A1C778482374F8 /* ScreenGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B6847C8D89327E832A14951 /* ScreenGeometry.swift */; };
 		F8109ABFEB96C999A328C0EA /* SharedWebViewManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB713CA7C95306884C35BB03 /* SharedWebViewManager.swift */; };
@@ -46,6 +47,7 @@
 		6D2C9AF8C1F7411AD0875E92 /* AppCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCoordinator.swift; sourceTree = "<group>"; };
 		757760E4AD39F9942A43FB66 /* RemoteNotesClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteNotesClient.swift; sourceTree = "<group>"; };
 		84F4326241D64F5ECD08A675 /* LegacyImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyImporter.swift; sourceTree = "<group>"; };
+		9EEB46728D7AEAC25773CCA0 /* NoteFont.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteFont.swift; sourceTree = "<group>"; };
 		A16AE919884576A37A16655F /* WebViewHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewHost.swift; sourceTree = "<group>"; };
 		B4AA9E7CEE822A3A8CC1DD67 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		B886F33B3197717C78165B58 /* NoteManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteManager.swift; sourceTree = "<group>"; };
@@ -91,6 +93,7 @@
 			children = (
 				DB2AF21E0B78FD40A3CDC5CD /* Note.swift */,
 				D8AD4975D97DF61425F1AE67 /* NoteColor.swift */,
+				9EEB46728D7AEAC25773CCA0 /* NoteFont.swift */,
 				106F60516B4E8E434AC1E31D /* NoteStack.swift */,
 			);
 			path = Models;
@@ -266,6 +269,7 @@
 				7F2FC897E8F96EF6EA472069 /* MarkdownPreview.swift in Sources */,
 				1C46CDDB22B4ED981F589AD2 /* Note.swift in Sources */,
 				90D47C5608DB53CC72FB1C61 /* NoteColor.swift in Sources */,
+				E060B0619A2A9703187F123E /* NoteFont.swift in Sources */,
 				7FD53CDB722D5F3B4AC52D22 /* NoteManager.swift in Sources */,
 				4CA629C98964B2004DDC1D2B /* NoteStack.swift in Sources */,
 				42B64CCC894F14DED9D9C667 /* NoteWindowController.swift in Sources */,

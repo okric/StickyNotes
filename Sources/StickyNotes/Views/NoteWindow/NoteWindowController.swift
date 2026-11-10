@@ -13,6 +13,7 @@ class NoteWindowController: NSWindowController, NSWindowDelegate, WebViewHost {
     private var pinButton: NSButton?
     private var colorButtons: [NoteColor: NSButton] = [:]
     private var opacitySlider: NSSlider?
+    private var titlebarControlsView: NSView?
 
     /// The main content container that holds either WKWebView or text preview/snapshot
     private var contentContainer: NSView!
@@ -26,6 +27,13 @@ class NoteWindowController: NSWindowController, NSWindowDelegate, WebViewHost {
 
     /// Cached snapshot of the last rendered editor state (shown when WebView moves to another window)
     private var snapshotView: NSImageView?
+
+    /// "Release to add to stack" overlay shown while dragging over the stack.
+    private var dropHintView: DropHintView?
+
+    /// Fixed, non-editable filename line above the editor.
+    private var titleLabel: NSTextField?
+    private var titleStripView: NSView?
 
     // MARK: - Initialization
 
@@ -156,6 +164,10 @@ class NoteWindowController: NSWindowController, NSWindowDelegate, WebViewHost {
             xOffset += 16
         }
 
+        // Controls appear only while this note is the key window.
+        container.isHidden = true
+        titlebarControlsView = container
+
         let accessory = NSTitlebarAccessoryViewController()
         accessory.view = container
         accessory.layoutAttribute = .right
@@ -213,6 +225,36 @@ class NoteWindowController: NSWindowController, NSWindowDelegate, WebViewHost {
         contentContainer = NSView(frame: container.bounds)
         contentContainer.autoresizingMask = [.width, .height]
         container.addSubview(contentContainer)
+
+        // Fixed filename line: native, not part of the Markdown document.
+        // It sits above the editor; editor content is padded below it.
+        let titleStrip: CGFloat = 30
+        let strip = NSView(
+            frame: NSRect(
+                x: 0,
+                y: contentRect.height - 28 - titleStrip,
+                width: contentRect.width,
+                height: titleStrip
+            )
+        )
+        strip.autoresizingMask = [.width, .minYMargin]
+        strip.wantsLayer = true
+        strip.layer?.backgroundColor = NoteColor.from(note.colorTheme).color.cgColor
+        titleStripView = strip
+
+        let label = NSTextField(labelWithString: note.title)
+        label.frame = NSRect(x: 12, y: 5, width: strip.bounds.width - 24, height: 20)
+        label.autoresizingMask = [.width]
+        label.font = NoteFont.titleFont(family: coordinator?.settings.titleFontFamily)
+        label.textColor = NSColor(white: 0.1, alpha: 0.85)
+        label.lineBreakMode = .byTruncatingTail
+        label.isEditable = false
+        label.isSelectable = false
+        label.isBordered = false
+        label.drawsBackground = false
+        titleLabel = label
+        strip.addSubview(label)
+        container.addSubview(strip)
 
         // Titlebar cursor overlay
         let titlebarOverlay = TitlebarCursorView(
@@ -289,9 +331,20 @@ class NoteWindowController: NSWindowController, NSWindowDelegate, WebViewHost {
         SharedWebViewManager.shared.setReadOnly(RemoteWriteAccess.isReadOnly(current))
     }
 
+    /// Re-apply Settings fonts after the user changes them.
+    func refreshFonts() {
+        titleLabel?.font = NoteFont.titleFont(family: coordinator?.settings.titleFontFamily)
+        if !hasWebView {
+            showTextPreview()
+        }
+    }
+
     /// Apply a body changed outside the editor (Notes API or a file edit).
     func applyExternalUpdate(content: String) {
         note.content = content
+        if let current = coordinator?.noteManager.getNote(note.id) {
+            titleLabel?.stringValue = current.title
+        }
         SharedWebViewManager.shared.invalidateCachedState(for: note.id)
         guard hasWebView else {
             showTextPreview()
@@ -340,7 +393,7 @@ class NoteWindowController: NSWindowController, NSWindowDelegate, WebViewHost {
         textView.isEditable = false
         textView.isSelectable = false
         textView.drawsBackground = false
-        textView.textContainerInset = NSSize(width: 12, height: 32)
+        textView.textContainerInset = NSSize(width: 12, height: 62)
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = false
         textView.autoresizingMask = [.width]
@@ -354,7 +407,12 @@ class NoteWindowController: NSWindowController, NSWindowDelegate, WebViewHost {
         )
         // Style the preview like the live editor: raw markdown would show
         // headings at body size until the shared WebView attaches.
-        textView.textStorage?.setAttributedString(MarkdownPreview.attributedString(for: content))
+        textView.textStorage?.setAttributedString(
+            MarkdownPreview.attributedString(
+                for: content,
+                fontFamily: coordinator?.settings.noteFontFamily
+            )
+        )
 
         scrollView.documentView = textView
         contentContainer.addSubview(scrollView)
@@ -371,6 +429,7 @@ class NoteWindowController: NSWindowController, NSWindowDelegate, WebViewHost {
     // MARK: - NSWindowDelegate Methods
 
     func windowDidBecomeKey(_ notification: Notification) {
+        titlebarControlsView?.isHidden = false
         attachWebView()
     }
 
@@ -378,6 +437,7 @@ class NoteWindowController: NSWindowController, NSWindowDelegate, WebViewHost {
         // Detach is handled by the NEW window's attachWebView().
         // This avoids the async timing race where detach would run
         // after the new window has already switched content.
+        titlebarControlsView?.isHidden = true
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
@@ -458,11 +518,13 @@ class NoteWindowController: NSWindowController, NSWindowDelegate, WebViewHost {
         let overStack = coordinator.windowManager.stackWindowController?.window?
             .frame.contains(NSPoint(x: frame.midX, y: frame.midY)) ?? false
         coordinator.windowManager.stackWindowController?.setDropHighlight(overStack)
+        setDropHint(overStack)
     }
 
     private func titlebarDragEnded(at frame: NSRect) {
         guard let coordinator else { return }
         coordinator.windowManager.stackWindowController?.setDropHighlight(false)
+        setDropHint(false)
 
         guard !note.isStacked,
               let stack = coordinator.windowManager.stackWindowController,
@@ -473,6 +535,21 @@ class NoteWindowController: NSWindowController, NSWindowDelegate, WebViewHost {
         coordinator.moveNoteToStack(noteId: note.id)
     }
 
+    private func setDropHint(_ visible: Bool) {
+        if visible {
+            if dropHintView == nil {
+                let hint = DropHintView(frame: contentContainer.bounds)
+                hint.autoresizingMask = [.width, .height]
+                contentContainer.addSubview(hint)
+                dropHintView = hint
+            }
+            dropHintView?.isHidden = false
+            return
+        }
+        dropHintView?.removeFromSuperview()
+        dropHintView = nil
+    }
+
     // MARK: - Public Methods
 
     func setOpacity(_ opacity: Double) {
@@ -481,7 +558,9 @@ class NoteWindowController: NSWindowController, NSWindowDelegate, WebViewHost {
 
     func setColorTheme(_ theme: String) {
         note.colorTheme = theme
-        window?.backgroundColor = NoteColor.from(theme).color
+        let color = NoteColor.from(theme).color
+        window?.backgroundColor = color
+        titleStripView?.layer?.backgroundColor = color.cgColor
     }
 
     func setAlwaysOnTop(_ alwaysOnTop: Bool) {
@@ -595,5 +674,45 @@ private class TitlebarCursorView: NSView {
         }
         dragOrigin = nil
         dragStart = nil
+    }
+}
+
+/// Overlay shown on a dragged note when it is over the stack drop target.
+final class DropHintView: NSView {
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    override func draw(_ dirtyRect: NSRect) {
+        NSColor.controlAccentColor.withAlphaComponent(0.95).setStroke()
+        let border = NSBezierPath(
+            roundedRect: bounds.insetBy(dx: 2, dy: 2),
+            xRadius: 8,
+            yRadius: 8
+        )
+        border.lineWidth = 4
+        border.stroke()
+
+        let text = "Release to add to stack" as NSString
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 13, weight: .semibold),
+            .foregroundColor: NSColor.white
+        ]
+        let textSize = text.size(withAttributes: attributes)
+        let height: CGFloat = 28
+        let width = textSize.width + 24
+        let rect = NSRect(
+            x: bounds.midX - width / 2,
+            y: bounds.midY - height / 2,
+            width: width,
+            height: height
+        )
+        NSColor(white: 0, alpha: 0.72).setFill()
+        NSBezierPath(roundedRect: rect, xRadius: height / 2, yRadius: height / 2).fill()
+        text.draw(
+            at: NSPoint(
+                x: rect.midX - textSize.width / 2,
+                y: rect.midY - textSize.height / 2
+            ),
+            withAttributes: attributes
+        )
     }
 }
