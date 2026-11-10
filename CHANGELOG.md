@@ -4,6 +4,13 @@ All notable changes to MD Sticky Notes will be documented in this file.
 
 ## [Unreleased]
 
+### Fixes
+
+- Math at the very start of a note renders when the note is first opened; a
+  caret sitting exactly on a formula boundary no longer counts as editing it
+  (a caret strictly inside still unfolds the source, and range selections
+  behave as before)
+
 ### Note stacks
 
 - Notes added to the notes folder join one default stack, shown as a single

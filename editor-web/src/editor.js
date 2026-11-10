@@ -643,9 +643,13 @@ function buildMathDecorations(state) {
   const { from: curFrom, to: curTo } = state.selection.main;
   let match;
 
+  // A collapsed caret at the very edge of a formula is not "editing" it: an
+  // editor opened with the caret at 0 must still render math that starts the
+  // document. Only positions strictly inside unfold the source.
   function cursorInside(from, to) {
     if (snapshotMode) return false;
-    return curFrom >= from && curTo <= to;
+    if (curFrom === curTo) return curFrom > from && curFrom < to;
+    return curFrom < to && curTo > from;
   }
 
   // 1. Block math: $$...$$  (multiline ok)
@@ -739,8 +743,12 @@ function getRenderedBlockMathRanges(state) {
   let match;
   while ((match = blockRe.exec(text)) !== null) {
     const mFrom = match.index, mTo = mFrom + match[0].length;
-    // Only include ranges that are actually rendered (cursor NOT inside)
-    if (!(curFrom >= mFrom && curTo <= mTo)) {
+    // Only include ranges that are actually rendered (cursor NOT strictly inside)
+    const collapsed = curFrom === curTo;
+    const editing = collapsed
+      ? curFrom > mFrom && curFrom < mTo
+      : curFrom < mTo && curTo > mFrom;
+    if (!editing) {
       ranges.push({ from: mFrom, to: mTo });
     }
   }
