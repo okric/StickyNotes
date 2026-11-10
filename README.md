@@ -43,6 +43,7 @@ A native macOS sticky note app with Obsidian-style markdown live preview, built 
 - **Notes Inbox**: File > Fetch Notes Inbox… (Cmd+Shift+I) pulls every note from the Notes server into the notes folder, joins the default stack, and deletes the server copy only after the file and index entry are saved; the same pass also runs automatically every minute
 - **Fonts**: pick the note body and filename fonts in Settings; sizes stay fixed
 - **Notes Folder Settings**: pick any folder, or create `~/Documents/Sticky Notes` (Cmd+,)
+- **Settings**: Notes server URL, token status (read-only once stored, with Clear), inbox poll interval (1/5/15/30 minutes), and Launch at login
 
 ### Keyboard Shortcuts
 | Shortcut | Action |

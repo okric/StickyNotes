@@ -86,7 +86,10 @@ struct MenuBarCommands: Scene {
 
     var body: some Scene {
         Settings {
-            SettingsView(settings: coordinator.settings)
+            SettingsView(
+                settings: coordinator.settings,
+                launchAtLogin: coordinator.launchAtLogin
+            )
         }
         .commands {
             // File menu

@@ -18,6 +18,9 @@ class AppCoordinator: ObservableObject {
     /// Notes folder and migration preferences (Settings window)
     @Published var settings: AppSettings
 
+    /// Login-item state for Settings → Startup (system-owned registration).
+    let launchAtLogin = LaunchAtLogin()
+
     /// True while a Notes inbox fetch/import is in flight; disables the menu item.
     @Published private(set) var isFetchingInbox = false
 
@@ -40,10 +43,13 @@ class AppCoordinator: ObservableObject {
     /// Polls the Notes server for inbox notes. Manual passes report; the timer
     /// stays silent so an empty inbox never pops an alert.
     private var inboxTimer: Timer?
-    private let inboxPollInterval: TimeInterval = 60
     /// Keeps macOS App Nap from coalescing (or suspending) the inbox timer while
     /// the app sits in the background. Allows the system to sleep normally.
     private var inboxActivity: NSObjectProtocol?
+
+    private var inboxPollInterval: TimeInterval {
+        TimeInterval(max(1, settings.inboxPollMinutes) * 60)
+    }
 
     // MARK: - Initialization
 
@@ -787,6 +793,14 @@ class AppCoordinator: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.applyFontPreferences()
+            }
+            .store(in: &cancellables)
+
+        settings.$inboxPollMinutes
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.startInboxPolling()
             }
             .store(in: &cancellables)
     }

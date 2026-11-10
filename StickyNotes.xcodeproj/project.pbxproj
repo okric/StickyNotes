@@ -18,6 +18,7 @@
 		501054FD3179F74231299EDE /* StickyNotesApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE2544B56321F9916BB75E94 /* StickyNotesApp.swift */; };
 		52AAD5D7ED740AC1B1AF121E /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4AA9E7CEE822A3A8CC1DD67 /* SettingsView.swift */; };
 		5C63932B271D7E084481C9F6 /* NotesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65AB489EFEBA441E9BB103F5 /* NotesStore.swift */; };
+		5FF9E96C33CAEE593E336EC9 /* LaunchAtLogin.swift in Sources */ = {isa = PBXBuildFile; fileRef = D18229F8DCE5406C167A8068 /* LaunchAtLogin.swift */; };
 		637484C42C4A7064C4266113 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = D319DC00F39B7144CBE620E9 /* AppIcon.icns */; };
 		64BD8802AE918E4D1AF55459 /* LegacyImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84F4326241D64F5ECD08A675 /* LegacyImporter.swift */; };
 		6CDC78B2AD65AD1D51927FCE /* AppCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2C9AF8C1F7411AD0875E92 /* AppCoordinator.swift */; };
@@ -56,6 +57,7 @@
 		BD6D76086672B50F2D9B7441 /* NotesFolderMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesFolderMonitor.swift; sourceTree = "<group>"; };
 		BDE69F17D9D7F72F804363A8 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		CB713CA7C95306884C35BB03 /* SharedWebViewManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedWebViewManager.swift; sourceTree = "<group>"; };
+		D18229F8DCE5406C167A8068 /* LaunchAtLogin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLogin.swift; sourceTree = "<group>"; };
 		D319DC00F39B7144CBE620E9 /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
 		D74F446594874811D48D7768 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		D8AD4975D97DF61425F1AE67 /* NoteColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteColor.swift; sourceTree = "<group>"; };
@@ -128,6 +130,7 @@
 			children = (
 				6D2C9AF8C1F7411AD0875E92 /* AppCoordinator.swift */,
 				BDE69F17D9D7F72F804363A8 /* AppSettings.swift */,
+				D18229F8DCE5406C167A8068 /* LaunchAtLogin.swift */,
 				84F4326241D64F5ECD08A675 /* LegacyImporter.swift */,
 				B886F33B3197717C78165B58 /* NoteManager.swift */,
 				BD6D76086672B50F2D9B7441 /* NotesFolderMonitor.swift */,
@@ -268,6 +271,7 @@
 			files = (
 				6CDC78B2AD65AD1D51927FCE /* AppCoordinator.swift in Sources */,
 				8E93750A5B1CFAD30D61EA3D /* AppSettings.swift in Sources */,
+				5FF9E96C33CAEE593E336EC9 /* LaunchAtLogin.swift in Sources */,
 				64BD8802AE918E4D1AF55459 /* LegacyImporter.swift in Sources */,
 				7F2FC897E8F96EF6EA472069 /* MarkdownPreview.swift in Sources */,
 				1C46CDDB22B4ED981F589AD2 /* Note.swift in Sources */,

@@ -19,7 +19,11 @@ final class AppSettings: ObservableObject {
     /// keyed by this origin; the origin itself is ordinary preference data.
     @Published private(set) var notesServerURL: String?
 
+    /// How often the background inbox pass runs, in minutes.
+    @Published private(set) var inboxPollMinutes: Int
+
     static let defaultNotesServerURL = ""
+    static let inboxPollChoices = [1, 5, 15, 30]
 
     private let store: NotesStore
 
@@ -31,6 +35,8 @@ final class AppSettings: ObservableObject {
         self.noteFontFamily = data.noteFontFamily
         self.titleFontFamily = data.titleFontFamily
         self.notesServerURL = data.notesServerURL
+        let storedMinutes = data.inboxPollMinutes ?? 1
+        self.inboxPollMinutes = Self.inboxPollChoices.contains(storedMinutes) ? storedMinutes : 1
     }
 
     /// Configured server origin; empty until set in Settings.
@@ -111,6 +117,14 @@ final class AppSettings: ObservableObject {
         persist()
     }
 
+    /// How often the background inbox pass runs. Only the offered choices stick.
+    func setInboxPollMinutes(_ minutes: Int) {
+        guard Self.inboxPollChoices.contains(minutes),
+              inboxPollMinutes != minutes else { return }
+        inboxPollMinutes = minutes
+        persist()
+    }
+
     func markLegacyMigrationDone() {
         didMigrateLegacyNotes = true
         persist()
@@ -123,7 +137,8 @@ final class AppSettings: ObservableObject {
                 didMigrateLegacyNotes: didMigrateLegacyNotes,
                 noteFontFamily: noteFontFamily,
                 titleFontFamily: titleFontFamily,
-                notesServerURL: notesServerURL
+                notesServerURL: notesServerURL,
+                inboxPollMinutes: inboxPollMinutes
             )
         )
     }

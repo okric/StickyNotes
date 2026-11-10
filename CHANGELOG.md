@@ -50,6 +50,10 @@ All notable changes to MD Sticky Notes will be documented in this file.
   the stack refreshes without taking focus, and failures only go to the console
 - An activity assertion keeps App Nap from stretching the interval when the app
   sits in the background; the Mac can still sleep normally
+- Settings picks the interval: 1, 5, 15 or 30 minutes
+- A stored token is shown as a read-only status line with a Clear button; the
+  input field only appears when no token exists for the server
+- Settings → Startup adds Launch at login through `SMAppService` (macOS 13+)
 
 ## [1.3.2] - 2026-11-08
 
