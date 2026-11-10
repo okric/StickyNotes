@@ -18,6 +18,9 @@ class AppCoordinator: ObservableObject {
     /// Notes folder and migration preferences (Settings window)
     @Published var settings: AppSettings
 
+    /// True while a Notes inbox fetch/import is in flight; disables the menu item.
+    @Published private(set) var isFetchingInbox = false
+
     // MARK: - Private Properties
 
     private let store: NotesStore
@@ -378,6 +381,87 @@ class AppCoordinator: ObservableObject {
         let alert = NSAlert()
         alert.messageText = "Could not open the note"
         alert.informativeText = error.localizedDescription
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "OK")
+        NSApp.activate(ignoringOtherApps: true)
+        alert.runModal()
+    }
+
+    // MARK: - Notes inbox
+
+    /// Pull every note from the Notes API into the notes folder and the default
+    /// stack, then delete the server copies (File > Fetch Notes Inbox).
+    func fetchNotesInbox() {
+        guard !isFetchingInbox else { return }
+        guard let folder = settings.defaultFolderURL else {
+            presentInboxError("Choose a notes folder in Settings first.")
+            return
+        }
+
+        let baseString = RemoteCredentials.normalize(settings.notesServerURLString)
+        guard let base = URL(string: baseString), base.scheme != nil, base.host != nil else {
+            presentInboxError("Set a Notes server URL in Settings.")
+            return
+        }
+        guard let token = RemoteCredentials.token(for: baseString) else {
+            presentInboxError("No token stored for \(baseString). Add one in Settings.")
+            return
+        }
+
+        isFetchingInbox = true
+        RemoteNotesClient.shared.listNotes(baseURL: base, token: token) { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .failure(let error):
+                self.isFetchingInbox = false
+                self.presentInboxError(error.localizedDescription)
+
+            case .success(let remoteNotes):
+                let stackPosition = self.noteManager.stack?.position
+                    ?? self.calculateNewNotePosition()
+                NotesInboxImporter.run(
+                    remoteNotes: remoteNotes,
+                    baseURL: baseString,
+                    token: token,
+                    folder: folder,
+                    stackPosition: stackPosition,
+                    noteManager: self.noteManager,
+                    store: self.store
+                ) { [weak self] outcome in
+                    guard let self else { return }
+                    self.isFetchingInbox = false
+                    if outcome.imported > 0 {
+                        self.syncStackWindow()
+                        self.windowManager.stackWindowController?.refreshFromModel()
+                        self.windowManager.stackWindowController?.window?
+                            .makeKeyAndOrderFront(nil)
+                    }
+                    self.presentInboxOutcome(outcome)
+                }
+            }
+        }
+    }
+
+    private func presentInboxOutcome(_ outcome: NotesInboxImporter.Outcome) {
+        let alert = NSAlert()
+        alert.alertStyle = .informational
+        alert.messageText = "Fetch Notes Inbox"
+        var text = "Imported \(outcome.imported) notes, deleted \(outcome.deleted), "
+            + "kept \(outcome.kept) on the server."
+        if outcome.kept > 0 {
+            text += "\n\nA note kept on the server already has a local copy; "
+                + "the next fetch skips it instead of duplicating it."
+        }
+        alert.informativeText = text
+        alert.addButton(withTitle: "OK")
+        NSApp.activate(ignoringOtherApps: true)
+        alert.runModal()
+    }
+
+    private func presentInboxError(_ message: String) {
+        let alert = NSAlert()
+        alert.messageText = "Could not fetch the notes inbox"
+        alert.informativeText = message
         alert.alertStyle = .warning
         alert.addButton(withTitle: "OK")
         NSApp.activate(ignoringOtherApps: true)

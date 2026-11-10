@@ -106,6 +106,12 @@ struct MenuBarCommands: Scene {
                 }
                 .keyboardShortcut("o", modifiers: [.command, .shift])
 
+                Button("Fetch Notes Inbox") {
+                    coordinator.fetchNotesInbox()
+                }
+                .keyboardShortcut("i", modifiers: [.command, .shift])
+                .disabled(coordinator.isFetchingInbox)
+
                 Divider()
 
                 Button("Show All Notes") {

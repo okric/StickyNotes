@@ -16,17 +16,20 @@ final class NotesStore {
         var didMigrateLegacyNotes: Bool
         var noteFontFamily: String?
         var titleFontFamily: String?
+        var notesServerURL: String?
 
         init(
             defaultFolderPath: String? = nil,
             didMigrateLegacyNotes: Bool = false,
             noteFontFamily: String? = nil,
-            titleFontFamily: String? = nil
+            titleFontFamily: String? = nil,
+            notesServerURL: String? = nil
         ) {
             self.defaultFolderPath = defaultFolderPath
             self.didMigrateLegacyNotes = didMigrateLegacyNotes
             self.noteFontFamily = noteFontFamily
             self.titleFontFamily = titleFontFamily
+            self.notesServerURL = notesServerURL
         }
     }
 

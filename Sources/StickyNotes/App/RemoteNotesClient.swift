@@ -38,18 +38,40 @@ struct RemoteNoteLink: Equatable {
     }
 }
 
-/// Payload of `GET /api/shared/<shareId>` (the subset this app needs).
+/// Payload of `GET /api/shared/<shareId>` and `GET /api/notes` (the subset this
+/// app needs). `createdAt`/`updatedAt` are ISO 8601 strings; they are optional
+/// because the shared-note payload does not carry them.
 struct RemoteNote: Decodable {
     let id: String
     let title: String
     let body: String
     let revision: String
+    let createdAt: String?
+    let updatedAt: String?
+
+    /// Server creation time, when the payload carries one.
+    var createdDate: Date? { Self.parseTimestamp(createdAt) }
+
+    /// Server modification time, when the payload carries one.
+    var updatedDate: Date? { Self.parseTimestamp(updatedAt) }
+
+    /// The API sends `new Date().toISOString()` (fractional seconds); older
+    /// files may not have them. Accept both.
+    private static func parseTimestamp(_ value: String?) -> Date? {
+        guard let value, !value.isEmpty else { return nil }
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractional.date(from: value) { return date }
+        let plain = ISO8601DateFormatter()
+        plain.formatOptions = [.withInternetDateTime]
+        return plain.date(from: value)
+    }
 }
 
-/// Read access to a Notes API instance.
+/// Access to a Notes API instance.
 ///
-/// Only the open share endpoint is used for now: no token, no writes. The
-/// share id is the capability, so polling uses the same URL the user pasted.
+/// Reads use the open share endpoint (no token) or the token-protected list;
+/// writes (PATCH, DELETE) need `Authorization: Bearer nk_…`.
 final class RemoteNotesClient {
     static let shared = RemoteNotesClient()
 
@@ -64,6 +86,7 @@ final class RemoteNotesClient {
         case invalidResponse
         case invalidLink
         case conflict(RemoteNote)
+        case revisionMismatch
         case unauthorized
 
         var errorDescription: String? {
@@ -72,7 +95,7 @@ final class RemoteNotesClient {
                 return "Expected a note link like https://notes.example.com/n/<id>."
             case .unauthorized:
                 return "The notes server rejected the token (401). Check it in Settings."
-            case .conflict:
+            case .conflict, .revisionMismatch:
                 return "The note changed on the server since it was loaded."
             case .badStatus(404):
                 return "That note is not shared anymore (or the link is wrong)."
@@ -82,6 +105,87 @@ final class RemoteNotesClient {
                 return "The notes server returned an unexpected response."
             }
         }
+    }
+
+    /// Every note on the server in card (`position`) order.
+    func listNotes(
+        baseURL: URL,
+        token: String,
+        completion: @escaping (Result<[RemoteNote], Error>) -> Void
+    ) {
+        let url = baseURL
+            .appendingPathComponent("api")
+            .appendingPathComponent("notes")
+
+        var request = URLRequest(url: url, timeoutInterval: 15)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+
+        session.dataTask(with: request) { data, response, error in
+            let result: Result<[RemoteNote], Error>
+            if let error {
+                result = .failure(error)
+            } else if let http = response as? HTTPURLResponse {
+                switch http.statusCode {
+                case 200..<300:
+                    if let data, let notes = try? JSONDecoder().decode([RemoteNote].self, from: data) {
+                        result = .success(notes)
+                    } else {
+                        result = .failure(ClientError.invalidResponse)
+                    }
+                case 401, 403:
+                    result = .failure(ClientError.unauthorized)
+                default:
+                    result = .failure(ClientError.badStatus(http.statusCode))
+                }
+            } else {
+                result = .failure(ClientError.invalidResponse)
+            }
+            DispatchQueue.main.async { completion(result) }
+        }.resume()
+    }
+
+    /// Conditional delete. `If-Match` makes the server answer 409 when the note
+    /// changed since `revision` was read, so a stale client never deletes a
+    /// newer version. A 404 counts as deleted: the server copy is already gone.
+    func deleteNote(
+        baseURL: URL,
+        noteID: String,
+        revision: String,
+        token: String,
+        completion: @escaping (Result<Void, Error>) -> Void
+    ) {
+        let url = baseURL
+            .appendingPathComponent("api")
+            .appendingPathComponent("notes")
+            .appendingPathComponent(noteID)
+
+        var request = URLRequest(url: url, timeoutInterval: 15)
+        request.httpMethod = "DELETE"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("\"\(revision)\"", forHTTPHeaderField: "If-Match")
+
+        session.dataTask(with: request) { _, response, error in
+            let result: Result<Void, Error>
+            if let error {
+                result = .failure(error)
+            } else if let http = response as? HTTPURLResponse {
+                switch http.statusCode {
+                case 200..<300, 404:
+                    result = .success(())
+                case 401, 403:
+                    result = .failure(ClientError.unauthorized)
+                case 409:
+                    result = .failure(ClientError.revisionMismatch)
+                default:
+                    result = .failure(ClientError.badStatus(http.statusCode))
+                }
+            } else {
+                result = .failure(ClientError.invalidResponse)
+            }
+            DispatchQueue.main.async { completion(result) }
+        }.resume()
     }
 
     /// Conditional write: `If-Match` makes the server answer 409 when the file

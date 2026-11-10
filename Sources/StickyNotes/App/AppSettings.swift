@@ -15,6 +15,12 @@ final class AppSettings: ObservableObject {
     @Published private(set) var noteFontFamily: String?
     @Published private(set) var titleFontFamily: String?
 
+    /// Last Notes API origin used in Settings. Tokens live in the Keychain,
+    /// keyed by this origin; the origin itself is ordinary preference data.
+    @Published private(set) var notesServerURL: String?
+
+    static let defaultNotesServerURL = ""
+
     private let store: NotesStore
 
     init(store: NotesStore) {
@@ -24,6 +30,12 @@ final class AppSettings: ObservableObject {
         self.didMigrateLegacyNotes = data.didMigrateLegacyNotes
         self.noteFontFamily = data.noteFontFamily
         self.titleFontFamily = data.titleFontFamily
+        self.notesServerURL = data.notesServerURL
+    }
+
+    /// Configured server origin; empty until set in Settings.
+    var notesServerURLString: String {
+        notesServerURL ?? Self.defaultNotesServerURL
     }
 
     var defaultFolderURL: URL? {
@@ -91,6 +103,14 @@ final class AppSettings: ObservableObject {
         persist()
     }
 
+    /// Store the Notes server origin used for the inbox fetch and token lookup.
+    func setNotesServerURL(_ raw: String) {
+        let normalized = RemoteCredentials.normalize(raw)
+        guard notesServerURL != normalized else { return }
+        notesServerURL = normalized
+        persist()
+    }
+
     func markLegacyMigrationDone() {
         didMigrateLegacyNotes = true
         persist()
@@ -102,7 +122,8 @@ final class AppSettings: ObservableObject {
                 defaultFolderPath: defaultFolderPath,
                 didMigrateLegacyNotes: didMigrateLegacyNotes,
                 noteFontFamily: noteFontFamily,
-                titleFontFamily: titleFontFamily
+                titleFontFamily: titleFontFamily,
+                notesServerURL: notesServerURL
             )
         )
     }

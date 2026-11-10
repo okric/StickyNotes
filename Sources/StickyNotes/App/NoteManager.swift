@@ -171,7 +171,9 @@ class NoteManager: ObservableObject {
         }
         let stack: NoteStack
         if let seedNote {
-            stack = NoteStack(seeding: seedNote, at: position)
+            var seeded = NoteStack(seeding: seedNote, at: position)
+            if let frontNoteID { seeded.frontNoteID = frontNoteID }
+            stack = seeded
         } else {
             stack = NoteStack(position: position, frontNoteID: frontNoteID)
         }
@@ -260,6 +262,34 @@ class NoteManager: ObservableObject {
         reconcileStack()
         print("[NoteManager] Added note \(noteId) to the stack")
         return notes.first { $0.id == noteId }
+    }
+
+    /// Register notes written by the Notes inbox importer. All of them join the
+    /// default stack, and the index is saved before this returns so the folder
+    /// monitor's next pass finds the note by path instead of adding it again.
+    @discardableResult
+    func addImportedNotes(
+        _ imported: [Note],
+        at stackPosition: CGPoint,
+        frontNoteID: UUID?
+    ) -> [Note] {
+        guard !imported.isEmpty else { return [] }
+
+        var inserted = imported
+        for index in inserted.indices {
+            inserted[index].stackID = NoteStack.defaultID
+            inserted[index].position = stackPosition
+        }
+        notes.append(contentsOf: inserted)
+        ensureStack(
+            at: stackPosition,
+            seedNote: inserted.first,
+            frontNoteID: frontNoteID ?? inserted.first?.id
+        )
+        store.saveIndex(notes)
+        reconcileStack()
+        print("[NoteManager] Imported \(inserted.count) notes into the stack")
+        return notes.filter { note in inserted.contains(where: { $0.id == note.id }) }
     }
 
     /// Rename the backing Markdown file. The title is the file name, so the

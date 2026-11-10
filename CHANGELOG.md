@@ -34,6 +34,19 @@ All notable changes to MD Sticky Notes will be documented in this file.
 - Note controls (opacity, pin, colors) appear only while the note or stack
   window is focused
 
+### Notes inbox
+
+- File > Fetch Notes Inbox… (Cmd+Shift+I) lists every note on the Notes server,
+  writes each one as a Markdown file in the notes folder, and joins the default
+  stack with the newest import on top
+- Server copies are deleted only after the local file and index entry are
+  saved; a failed or conflicting delete keeps both copies
+- Imported files record the server note id, so a second pass skips a note whose
+  DELETE failed instead of duplicating it
+- Filename collisions follow the usual ` 2` suffix rule; the server body is
+  saved as-is (it has no frontmatter)
+- The Notes server URL is now remembered in Settings, next to the Keychain token
+
 ## [1.3.2] - 2026-11-08
 
 ### The app is named “Sticky Notes”

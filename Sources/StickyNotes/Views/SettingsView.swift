@@ -6,7 +6,7 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var settings: AppSettings
 
-    @State private var serverURL = "https://notes.example.com"
+    @State private var serverURL = AppSettings.defaultNotesServerURL
     @State private var token = ""
     @State private var tokenStatus = ""
     @State private var tokenStatusIsError = false
@@ -99,7 +99,10 @@ struct SettingsView: View {
         }
         .padding(20)
         .frame(width: 540)
-        .onAppear { refreshTokenStatus() }
+        .onAppear {
+            serverURL = settings.notesServerURLString
+            refreshTokenStatus()
+        }
     }
 
     private var noteFontBinding: Binding<String> {
@@ -124,6 +127,7 @@ struct SettingsView: View {
             return
         }
         serverURL = base
+        settings.setNotesServerURL(base)
         RemoteCredentials.setToken(token, for: base)
         token = ""
         refreshTokenStatus()

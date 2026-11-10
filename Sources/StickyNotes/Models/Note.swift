@@ -58,6 +58,14 @@ struct Note: Identifiable, Equatable {
     /// Content revision of the last successful fetch/save
     var remoteRevision: String?
 
+    /// Notes API note id this local file was imported from (inbox only).
+    /// Kept after the server copy is deleted, and used to skip a note whose
+    /// DELETE failed so a second pass does not duplicate it.
+    var originNoteID: String?
+
+    /// Notes API origin (`scheme://host[:port]`) that `originNoteID` belongs to
+    var originBaseURL: String?
+
     /// Window size on screen
     var size: CGSize
 
@@ -111,6 +119,8 @@ struct Note: Identifiable, Equatable {
         remoteNoteID: String? = nil,
         remoteShareID: String? = nil,
         remoteRevision: String? = nil,
+        originNoteID: String? = nil,
+        originBaseURL: String? = nil,
         size: CGSize = CGSize(width: 300, height: 360),
         isMinimized: Bool = false,
         opacity: Double = 0.95,
@@ -135,6 +145,8 @@ struct Note: Identifiable, Equatable {
         self.remoteNoteID = remoteNoteID
         self.remoteShareID = remoteShareID
         self.remoteRevision = remoteRevision
+        self.originNoteID = originNoteID
+        self.originBaseURL = originBaseURL
         self.size = size
         self.isMinimized = isMinimized
         self.opacity = opacity
@@ -160,6 +172,7 @@ extension Note: Codable {
         case colorTheme, cursorPosition, scrollTop, alwaysOnTop, createdAt, modifiedAt
         case screenUUID, screenOffset
         case remoteBaseURL, remoteNoteID, remoteShareID, remoteRevision
+        case originNoteID, originBaseURL
     }
 
     init(from decoder: Decoder) throws {
@@ -182,6 +195,8 @@ extension Note: Codable {
         remoteNoteID = try container.decodeIfPresent(String.self, forKey: .remoteNoteID)
         remoteShareID = try container.decodeIfPresent(String.self, forKey: .remoteShareID)
         remoteRevision = try container.decodeIfPresent(String.self, forKey: .remoteRevision)
+        originNoteID = try container.decodeIfPresent(String.self, forKey: .originNoteID)
+        originBaseURL = try container.decodeIfPresent(String.self, forKey: .originBaseURL)
 
         screenUUID = try container.decodeIfPresent(String.self, forKey: .screenUUID)
         if let offsetDict = try container.decodeIfPresent([String: Double].self, forKey: .screenOffset) {
@@ -220,6 +235,8 @@ extension Note: Codable {
         try container.encodeIfPresent(remoteNoteID, forKey: .remoteNoteID)
         try container.encodeIfPresent(remoteShareID, forKey: .remoteShareID)
         try container.encodeIfPresent(remoteRevision, forKey: .remoteRevision)
+        try container.encodeIfPresent(originNoteID, forKey: .originNoteID)
+        try container.encodeIfPresent(originBaseURL, forKey: .originBaseURL)
 
         try container.encodeIfPresent(screenUUID, forKey: .screenUUID)
         if let screenOffset {
